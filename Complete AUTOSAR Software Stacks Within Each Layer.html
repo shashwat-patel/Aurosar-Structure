@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete AUTOSAR Software Stacks Within Each Layer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .main-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            font-size: 32px;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        .layer-container {
+            margin: 25px 0;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border: 3px solid;
+        }
+        .layer-header {
+            padding: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            position: relative;
+        }
+        .layer-number {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.2);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .stacks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            padding: 25px;
+            background: white;
+        }
+        .stack-box {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .stack-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            border-color: #3498db;
+        }
+        .stack-name {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+        .stack-description {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.3;
+        }
+        .stack-function {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 5px;
+            margin-top: 8px;
+            font-size: 11px;
+            border: 1px solid #e9ecef;
+        }
+        
+        /* Layer Colors */
+        .asw-layer {
+            border-color: #3498db;
+        }
+        .asw-header {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        }
+        
+        .rte-layer {
+            border-color: #9b59b6;
+        }
+        .rte-header {
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+        }
+        
+        .service-layer {
+            border-color: #f39c12;
+        }
+        .service-header {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        }
+        
+        .ecual-layer {
+            border-color: #1abc9c;
+        }
+        .ecual-header {
+            background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
+        }
+        
+        .cdd-layer {
+            border-color: #e74c3c;
+        }
+        .cdd-header {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+        
+        .mcal-layer {
+            border-color: #f1c40f;
+        }
+        .mcal-header {
+            background: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%);
+        }
+        
+        .hardware-layer {
+            border-color: #95a5a6;
+        }
+        .hardware-header {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+        }
+        
+        .flow-diagram {
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        .flow-path {
+            font-family: 'Courier New', monospace;
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .key-benefits {
+            background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 30px 0;
+        }
+        .benefit-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .benefit-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid rgba(255,255,255,0.5);
+        }
+        .arrow-down {
+            text-align: center;
+            font-size: 30px;
+            color: #7f8c8d;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h1>Complete AUTOSAR Software Stacks Within Each Layer</h1>
+        <p style="text-align: center; font-size: 18px; color: #555; margin-bottom: 30px;">
+            Door Switch (ECU A) → Interior Dimmer (ECU B) - All Software Components Detailed
+        </p>
+        
+        <!-- APPLICATION LAYER -->
+        <div class="layer-container asw-layer">
+            <div class="layer-header asw-header">
+                <div class="layer-number">1</div>
+                APPLICATION LAYER - Software Components (SWCs)
+            </div>
+            <div class="stacks-grid">
+                <div class="stack-box">
+                    <div class="stack-name">DoorControl_Swc</div>
+                    <div class="stack-description">Main door control business logic, debouncing, state management</div>
+                    <div class="stack-function">DoorControl_MainRunnable()<br>• Debouncing logic<br>• Door state validation</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">SensorControl_Swc</div>
+                    <div class="stack-description">Sensor data conditioning, filtering, and preprocessing</div>
+                    <div class="stack-function">SensorControl_10msRunnable()<br>• Raw sensor reading<br>• Signal conditioning</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">LightControl_Swc</div>
+                    <div class="stack-description">Interior lighting control, dimmer management, fade effects</div>
+                    <div class="stack-function">LightControl_MainRunnable()<br>• Brightness calculation<br>• Fade control logic</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">DiagnosticControl_Swc</div>
+                    <div class="stack-description">Application-level diagnostics and health monitoring</div>
+                    <div class="stack-function">DiagControl_Runnable()<br>• App-level diagnostics<br>• Health monitoring</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">SecurityControl_Swc</div>
+                    <div class="stack-description">Door security features, anti-theft, access control</div>
+                    <div class="stack-function">SecurityControl_Runnable()<br>• Access validation<br>• Security protocols</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">ComfortControl_Swc</div>
+                    <div class="stack-description">Comfort features, automatic lighting, user preferences</div>
+                    <div class="stack-function">ComfortControl_Runnable()<br>• User preferences<br>• Comfort features</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="arrow-down">↓</div>
+        
+        <!-- RTE LAYER -->
+        <div class="layer-container rte-layer">
+            <div class="layer-header rte-header">
+                <div class="layer-number">2</div>
+                RUNTIME ENVIRONMENT (RTE) - Interface & Scheduling Stacks
+            </div>
+            <div class="stacks-grid">
+                <div class="stack-box">
+                    <div class="stack-name">RTE Interface</div>
+                    <div class="stack-description">Port-based communication, data element access</div>
+                    <div class="stack-function">Rte_Write_PP_DoorStatus()<br>Rte_Read_RP_DoorSwitch()<br>• Port access APIs</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">RTE Core</div>
+                    <div class="stack-description">Message routing, inter-runnable communication</div>
+                    <div class="stack-function">Rte_Com_SendSignal()<br>• Data routing<br>• Inter-SWC communication</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">RTE Scheduler</div>
+                    <div class="stack-description">Runnable scheduling, task activation, timing</div>
+                    <div class="stack-function">Rte_ActivateTask()<br>• Runnable scheduling<br>• Timing management</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">RTE Generator</div>
+                    <div class="stack-description">Code generation from configuration, interface generation</div>
+                    <div class="stack-function">Generated Code:<br>• Interface headers<br>• Routing functions</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">RTE Calibration</div>
+                    <div class="stack-description">Parameter calibration, measurement points</div>
+                    <div class="stack-function">Rte_Prm_*()<br>• Parameter access<br>• Calibration support</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">RTE Mode Management</div>
+                    <div class="stack-description">Mode switches, state transitions</div>
+                    <div class="stack-function">Rte_Switch_Mode()<br>• Mode transitions<br>• State management</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="arrow-down">↓</div>
+        
+        <!-- SERVICE LAYER -->
+        <div class="layer-container service-layer">
+            <div class="layer-header service-header">
+                <div class="layer-number">3</div>
+                SERVICE LAYER - BSW Service Stacks
+            </div>
+            <div class="stacks-grid">
+                <div class="stack-box">
+                    <div class="stack-name">COM</div>
+                    <div class="stack-description">Signal packing/unpacking, transmission modes, filtering</div>
+                    <div class="stack-function">Com_SendSignal()<br>Com_ReceiveSignal()<br>• Signal management</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">PduR</div>
+                    <div class="stack-description">PDU routing, gateway functionality, module routing</div>
+                    <div class="stack-function">PduR_ComTransmit()<br>• Message routing<br>• Gateway functions</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">DEM</div>
+                    <div class="stack-description">Diagnostic event management, error monitoring</div>
+                    <div class="stack-function">Dem_ReportErrorStatus()<br>• Error monitoring<br>• Event storage</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">DCM</div>
+                    <div class="stack-description">Diagnostic communication, UDS protocol</div>
+                    <div class="stack-function">Dcm_ProcessRequest()<br>• UDS protocol<br>• Diagnostic services</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">NvM</div>
+                    <div class="stack-description">Non-volatile memory management, data persistence</div>
+                    <div class="stack-function">NvM_WriteBlock()<br>NvM_ReadBlock()<br>• Data persistence</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">BswM</div>
+                    <div class="stack-description">Basic software mode management, state coordination</div>
+                    <div class="stack-function">BswM_RequestMode()<br>• Mode management<br>• State coordination</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">ComM</div>
+                    <div class="stack-description">Communication management, network control</div>
+                    <div class="stack-function">ComM_RequestComMode()<br>• Network control<br>• Communication states</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">EcuM</div>
+                    <div class="stack-description">ECU state management, startup/shutdown sequences</div>
+                    <div class="stack-function">EcuM_SetWakeupEvent()<br>• ECU state control<br>• Power management</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">OS</div>
+                    <div class="stack-description">Operating system services, task scheduling</div>
+                    <div class="stack-function">ActivateTask()<br>• Task scheduling<br>• Resource management</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="arrow-down">↓</div>
+        
+        <!-- ECUAL LAYER -->
+        <div class="layer-container ecual-layer">
+            <div class="layer-header ecual-header">
+                <div class="layer-number">4</div>
+                ECU ABSTRACTION LAYER (ECUAL) - Interface Stacks
+            </div>
+            <div class="stacks-grid">
+                <div class="stack-box">
+                    <div class="stack-name">CanIf</div>
+                    <div class="stack-description">CAN interface, message filtering, hardware object mapping</div>
+                    <div class="stack-function">CanIf_Transmit()<br>CanIf_RxIndication()<br>• CAN abstraction</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">LinIf</div>
+                    <div class="stack-description">LIN interface, schedule management, node configuration</div>
+                    <div class="stack-function">LinIf_Transmit()<br>• LIN protocol<br>• Schedule management</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">FrIf</div>
+                    <div class="stack-description">FlexRay interface, slot management, cycle control</div>
+                    <div class="stack-function">FrIf_Transmit()<br>• FlexRay protocol<br>• Cycle management</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">EthIf</div>
+                    <div class="stack-description">Ethernet interface, frame management, switching</div>
+                    <div class="stack-function">EthIf_Transmit()<br>• Ethernet protocol<br>• Frame management</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">MemIf</div>
+                    <div class="stack-description">Memory interface, abstraction for different memory types</div>
+                    <div class="stack-function">MemIf_Write()<br>MemIf_Read()<br>• Memory abstraction</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">WdgIf</div>
+                    <div class="stack-description">Watchdog interface, multiple watchdog support</div>
+                    <div class="stack-function">WdgIf_SetTriggerCondition()<br>• Watchdog abstraction</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">FeeIf</div>
+                    <div class="stack-description">Flash EEPROM emulation interface</div>
+                    <div class="stack-function">FeeIf_Write()<br>• EEPROM emulation<br>• Wear leveling</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">CryIf</div>
+                    <div class="stack-description">Cryptographic interface, security operations</div>
+                    <div class="stack-function">CryIf_ProcessJob()<br>• Crypto operations<br>• Security services</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="arrow-down">↓</div>
+        
+        <!-- CDD LAYER -->
+        <div class="layer-container cdd-layer">
+            <div class="layer-header cdd-header">
+                <div class="layer-number">5</div>
+                COMPLEX DEVICE DRIVERS (CDD) - Custom Driver Stacks
+            </div>
+            <div class="stacks-grid">
+                <div class="stack-box">
+                    <div class="stack-name">Sensor CDD</div>
+                    <div class="stack-description">High-speed sensor processing, time-critical operations</div>
+                    <div class="stack-function">Cdd_HighSpeedSensor()<br>• Microsecond timing<br>• Direct MCAL access</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Actuator CDD</div>
+                    <div class="stack-description">Precise actuator control, real-time requirements</div>
+                    <div class="stack-function">Cdd_PreciseActuator()<br>• Real-time control<br>• Hardware optimization</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Safety CDD</div>
+                    <div class="stack-description">Safety monitoring, redundancy checking</div>
+                    <div class="stack-function">Cdd_SafetyMonitor()<br>• Redundancy check<br>• Safety validation</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Communication CDD</div>
+                    <div class="stack-description">Custom communication protocols, proprietary buses</div>
+                    <div class="stack-function">Cdd_CustomComm()<br>• Proprietary protocols<br>• Custom timing</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Memory CDD</div>
+                    <div class="stack-description">Custom memory management, special storage devices</div>
+                    <div class="stack-function">Cdd_CustomMemory()<br>• Special devices<br>• Custom algorithms</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Power CDD</div>
+                    <div class="stack-description">Power management, voltage monitoring</div>
+                    <div class="stack-function">Cdd_PowerManagement()<br>• Voltage monitoring<br>• Power optimization</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="arrow-down">↓</div>
+        
+        <!-- MCAL LAYER -->
+        <div class="layer-container mcal-layer">
+            <div class="layer-header mcal-header">
+                <div class="layer-number">6</div>
+                MICROCONTROLLER ABSTRACTION LAYER (MCAL) - Hardware Driver Stacks
+            </div>
+            <div class="stacks-grid">
+                <div class="stack-box">
+                    <div class="stack-name">Can</div>
+                    <div class="stack-description">CAN controller driver, message objects, hardware access</div>
+                    <div class="stack-function">Can_Write()<br>Can_SetControllerMode()<br>• CAN hardware control</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Dio</div>
+                    <div class="stack-description">Digital I/O driver, pin reading/writing</div>
+                    <div class="stack-function">Dio_ReadChannel()<br>Dio_WriteChannel()<br>• GPIO control</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Pwm</div>
+                    <div class="stack-description">PWM driver, duty cycle control, frequency management</div>
+                    <div class="stack-function">Pwm_SetDutyCycle()<br>Pwm_SetPeriodAndDuty()<br>• PWM control</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Adc</div>
+                    <div class="stack-description">ADC driver, analog-to-digital conversion</div>
+                    <div class="stack-function">Adc_ReadGroup()<br>Adc_StartGroupConversion()<br>• ADC control</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Gpt</div>
+                    <div class="stack-description">General purpose timer driver, timing services</div>
+                    <div class="stack-function">Gpt_StartTimer()<br>Gpt_GetTimeElapsed()<br>• Timer control</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Spi</div>
+                    <div class="stack-description">SPI driver, serial communication</div>
+                    <div class="stack-function">Spi_WriteIB()<br>Spi_ReadIB()<br>• SPI communication</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Icu</div>
+                    <div class="stack-description">Input capture unit, edge detection, measurement</div>
+                    <div class="stack-function">Icu_EnableNotification()<br>• Edge detection<br>• Signal measurement</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Fls</div>
+                    <div class="stack-description">Flash memory driver, program/erase operations</div>
+                    <div class="stack-function">Fls_Write()<br>Fls_Erase()<br>• Flash operations</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Mcu</div>
+                    <div class="stack-description">MCU driver, clock management, reset handling</div>
+                    <div class="stack-function">Mcu_InitClock()<br>Mcu_PerformReset()<br>• MCU control</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Port</div>
+                    <div class="stack-description">Port configuration, pin direction, mode setting</div>
+                    <div class="stack-function">Port_SetPinDirection()<br>Port_SetPinMode()<br>• Pin configuration</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Wdg</div>
+                    <div class="stack-description">Watchdog driver, system monitoring</div>
+                    <div class="stack-function">Wdg_SetTriggerCondition()<br>• System monitoring</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Lin</div>
+                    <div class="stack-description">LIN controller driver, frame transmission</div>
+                    <div class="stack-function">Lin_SendFrame()<br>• LIN communication</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="arrow-down">↓</div>
+        
+        <!-- HARDWARE LAYER -->
+        <div class="layer-container hardware-layer">
+            <div class="layer-header hardware-header">
+                <div class="layer-number">7</div>
+                MICROCONTROLLER HARDWARE - Infineon TC39x
+            </div>
+            <div class="stacks-grid">
+                <div class="stack-box">
+                    <div class="stack-name">CAN Controllers</div>
+                    <div class="stack-description">Multiple CAN nodes, message objects, filters</div>
+                    <div class="stack-function">Hardware Registers:<br>• CAN0, CAN1, CAN2<br>• Message objects</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">GPIO Ports</div>
+                    <div class="stack-description">Digital input/output pins, port configuration</div>
+                    <div class="stack-function">Hardware Registers:<br>• P00-P40 ports<br>• Pin control</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">GTM Module</div>
+                    <div class="stack-description">Generic Timer Module, PWM generation</div>
+                    <div class="stack-function">Hardware Registers:<br>• TOM, ATOM units<br>• PWM channels</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">ADC Modules</div>
+                    <div class="stack-description">Analog-to-digital converters, multiple channels</div>
+                    <div class="stack-function">Hardware Registers:<br>• VADC, EDSADC<br>• Conversion groups</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">CPU Cores</div>
+                    <div class="stack-description">TriCore CPU cores, parallel processing units</div>
+                    <div class="stack-function">Hardware Components:<br>• CPU0, CPU1, CPU2<br>• Parallel execution</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Flash Memory</div>
+                    <div class="stack-description">Program and data flash, EEPROM emulation</div>
+                    <div class="stack-function">Hardware Components:<br>• Program Flash<br>• Data Flash sectors</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">RAM Memory</div>
+                    <div class="stack-description">Local and global RAM, cache memory</div>
+                    <div class="stack-function">Hardware Components:<br>• DSPR, PSPR<br>• Global RAM</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">System Timers</div>
+                    <div class="stack-description">System tick timers, STM modules</div>
+                    <div class="stack-function">Hardware Components:<br>• STM0, STM1, STM2<br>• System timing</div>
+                </div>
+                <div class="stack-box">
+                    <div class="stack-name">Interrupt System</div>
+                    <div class="stack-description">Interrupt controller, priority management</div>
+                    <div class="stack-function">Hardware Components:<br>• IR interrupt router<br>• Priority control</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- COMPLETE FLOW DIAGRAM -->
+        <div class="flow-diagram">
+            <h3 style="margin-top: 0;">Complete Software Stack Flow: Door Switch → Dimmer</h3>
+            <div class="flow-path">
+                <strong>ECU A (BCM) - TRANSMISSION PATH:</strong><br>
+                Physical Door Switch → Port/Dio MCAL → IoHwAb → SensorControl_Swc → RTE Interface →<br>
+                DoorControl_Swc → RTE Core → COM Signal Packing → PduR Routing → CanIf Frame Preparation →<br>
+                Can MCAL Driver → TC39x CAN Controller → CAN Bus (Message ID: 0x123)
+            </div>
+            <div class="flow-path">
+                <strong>ECU B (ICM) - RECEPTION PATH:</strong><br>
+                CAN Bus (Message ID: 0x123) → TC39x CAN Controller → Can MCAL Driver → CanIf Reception →<br>
+                PduR Routing → COM Signal Unpacking → RTE Core → LightControl_Swc → RTE Interface →<br>
+                IoHwAb → Pwm MCAL → GTM Module → Physical Dimmer PWM Output
+            </div>
+        </div>
+        
+        <!-- KEY BENEFITS -->
+        <div class="key-benefits">
+            <h3 style="margin-top: 0;">Key Benefits of Complete AUTOSAR Stack Architecture</h3>
+            <div class="benefit-grid">
+                <div class="benefit-item">
+                    <strong>📋 Configuration-Driven Operation</strong><br>
+                    All software stacks read behavior from .arxml configuration files. Changing CAN ID, signal positions, or timing parameters requires only configuration updates, not source code changes.
+                </div>
+                <div class="benefit-item">
+                    <strong>🔧 Single Responsibility Principle</strong><br>
+                    Each software stack has one clear responsibility. COM handles signals, PduR handles routing, CanIf handles CAN specifics - no overlap or confusion.
+                </div>
+                <div class="benefit-item">
+                    <strong>🔄 Standardized Interfaces</strong><br>
+                    Every stack uses standard AUTOSAR APIs. Suppliers can replace any stack without affecting others, enabling modular development and testing.
+                </div>
+                <div class="benefit-item">
+                    <strong>🏗️ Hardware Abstraction</strong><br>
+                    Application layer is completely hardware independent. Same door control logic works on Infineon TC39x, Renesas RH850, or NXP S32K without changes.
+                </div>
+                <div class="benefit-item">
+                    <strong>✅ Independent Validation</strong><br>
+                    Each software stack can be tested independently. COM can be validated without CAN hardware, CanIf can be tested with simulated COM input.
+                </div>
+                <div class="benefit-item">
+                    <strong>🔍 Systematic Debugging</strong><br>
+                    Clear layer boundaries enable systematic troubleshooting. Signal issues can be isolated to specific stacks using standard diagnostic interfaces.
+                </div>
+                <div class="benefit-item">
+                    <strong>🚀 Supplier Integration</strong><br>
+                    Suppliers provide BSW stacks following this exact structure. Integration becomes predictable with standard interfaces and configuration methods.
+                </div>
+                <div class="benefit-item">
+                    <strong>⚡ Performance Optimization</strong><br>
+                    CDD layer allows bypassing upper layers for time-critical operations while maintaining overall system structure and safety.
+                </div>
+            </div>
+        </div>
+        
+        <!-- CONFIGURATION EXAMPLE -->
+        <div style="background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%); color: white; padding: 25px; border-radius: 15px; margin: 30px 0;">
+            <h3 style="margin-top: 0; color: white;">Configuration Controls All Stacks</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
+                    <strong>Change CAN ID (0x123 → 0x456):</strong><br>
+                    <div style="font-family: monospace; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 5px; margin: 10px 0;">
+                        &lt;CAN-MESSAGE&gt;<br>
+                        &nbsp;&nbsp;&lt;CAN-ID&gt;0x456&lt;/CAN-ID&gt;<br>
+                        &lt;/CAN-MESSAGE&gt;
+                    </div>
+                    ✅ All stacks automatically adapt<br>
+                    ✅ No source code changes needed
+                </div>
+                <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
+                    <strong>Add New Signal:</strong><br>
+                    <div style="font-family: monospace; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 5px; margin: 10px 0;">
+                        &lt;I-SIGNAL&gt;<br>
+                        &nbsp;&nbsp;&lt;SHORT-NAME&gt;PassengerDoor&lt;/SHORT-NAME&gt;<br>
+                        &nbsp;&nbsp;&lt;START-POSITION&gt;8&lt;/START-POSITION&gt;<br>
+                        &lt;/I-SIGNAL&gt;
+                    </div>
+                    ✅ COM automatically packs new signal<br>
+                    ✅ RTE generates new interfaces
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <strong>For Your OEM Context:</strong><br>
+                When working with AUTOSAR suppliers, they provide complete BSW stack implementations following this exact structure. Your integration points are clearly defined, configuration is standardized, and changes become systematic rather than ad-hoc modifications across multiple ECUs.
+            </div>
+        </div>
