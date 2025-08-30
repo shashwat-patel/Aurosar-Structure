@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Automotive Protocols OSI Layer Simulator</title>
+    <title>Complete Automotive Protocols OSI Layer Simulator</title>
     <style>
         * {
             margin: 0;
@@ -20,7 +20,7 @@
         }
 
         .container {
-            max-width: 1600px;
+            max-width: 1800px;
             margin: 0 auto;
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
@@ -43,24 +43,25 @@
         }
 
         .protocol-selector {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
             margin-bottom: 30px;
-            flex-wrap: wrap;
+            padding: 0 50px;
         }
 
         .protocol-btn {
-            padding: 15px 30px;
+            padding: 12px 20px;
             border: none;
             border-radius: 10px;
-            font-size: 1.1em;
+            font-size: 1em;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
             color: white;
             position: relative;
             overflow: hidden;
+            text-align: center;
         }
 
         .protocol-btn::before {
@@ -89,6 +90,10 @@
             background: linear-gradient(135deg, #f093fb, #f5576c);
         }
 
+        .protocol-btn.canxl {
+            background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+        }
+
         .protocol-btn.flexray {
             background: linear-gradient(135deg, #4facfe, #00f2fe);
         }
@@ -97,9 +102,56 @@
             background: linear-gradient(135deg, #43e97b, #38f9d7);
         }
 
+        .protocol-btn.ethernet {
+            background: linear-gradient(135deg, #FF8C42, #FF4E50);
+        }
+
+        .protocol-btn.ethernet10 {
+            background: linear-gradient(135deg, #A8E6CF, #7FFF00);
+        }
+
+        .protocol-btn.most {
+            background: linear-gradient(135deg, #DDA0DD, #9370DB);
+        }
+
         .protocol-btn.active {
             transform: scale(1.05);
             box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+
+        .protocol-categories {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .category-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .category-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .category-protocols {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .protocol-badge {
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            color: white;
+            background: #7f8c8d;
         }
 
         .main-content {
@@ -137,6 +189,8 @@
         .spec-value {
             color: #2c3e50;
             font-weight: bold;
+            text-align: right;
+            max-width: 60%;
         }
 
         .layer-stack {
@@ -205,9 +259,10 @@
         }
 
         .layer-protocol {
-            font-size: 0.9em;
+            font-size: 0.85em;
             opacity: 0.9;
             text-align: right;
+            max-width: 200px;
         }
 
         .message-flow {
@@ -334,15 +389,18 @@
         }
 
         th, td {
-            padding: 12px;
+            padding: 10px;
             text-align: left;
             border-bottom: 1px solid #e9ecef;
+            font-size: 0.9em;
         }
 
         th {
             background: #f8f9fa;
             color: #2c3e50;
             font-weight: 600;
+            position: sticky;
+            top: 0;
         }
 
         .feature-yes {
@@ -380,9 +438,10 @@
         }
 
         .signal-label {
-            width: 100px;
+            width: 120px;
             font-weight: bold;
             color: #7f8c8d;
+            font-size: 0.9em;
         }
 
         .signal-wave {
@@ -408,19 +467,20 @@
 
         .ecu-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
             margin-top: 15px;
         }
 
         .ecu-node {
             background: linear-gradient(135deg, #3498db, #2c3e50);
             color: white;
-            padding: 15px;
-            border-radius: 10px;
+            padding: 12px;
+            border-radius: 8px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s;
+            font-size: 0.9em;
         }
 
         .ecu-node:hover {
@@ -436,18 +496,58 @@
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.1); }
         }
+
+        .network-type-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 5px;
+            font-size: 0.75em;
+            margin-left: 5px;
+            background: rgba(255,255,255,0.3);
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚗 Automotive Protocols OSI Layer Simulator</h1>
-        <p class="subtitle">Explore how CAN, CAN-FD, FlexRay, and LIN map to the OSI model</p>
+        <h1>🚗 Complete Automotive Protocols OSI Layer Simulator</h1>
+        <p class="subtitle">Explore how all automotive protocols (CAN, Ethernet, FlexRay, MOST, LIN) map to the OSI model</p>
+        
+        <div class="protocol-categories">
+            <div class="category-card">
+                <div class="category-title">🚌 Traditional Bus</div>
+                <div class="category-protocols">
+                    <span class="protocol-badge">CAN</span>
+                    <span class="protocol-badge">CAN-FD</span>
+                    <span class="protocol-badge">CAN-XL</span>
+                    <span class="protocol-badge">LIN</span>
+                </div>
+            </div>
+            <div class="category-card">
+                <div class="category-title">🌐 Ethernet-Based</div>
+                <div class="category-protocols">
+                    <span class="protocol-badge">100BASE-T1</span>
+                    <span class="protocol-badge">1000BASE-T1</span>
+                    <span class="protocol-badge">10BASE-T1S</span>
+                </div>
+            </div>
+            <div class="category-card">
+                <div class="category-title">⚡ High-Speed/Specialized</div>
+                <div class="category-protocols">
+                    <span class="protocol-badge">FlexRay</span>
+                    <span class="protocol-badge">MOST</span>
+                </div>
+            </div>
+        </div>
         
         <div class="protocol-selector">
             <button class="protocol-btn can active" onclick="selectProtocol('CAN')">CAN</button>
             <button class="protocol-btn canfd" onclick="selectProtocol('CAN-FD')">CAN-FD</button>
+            <button class="protocol-btn canxl" onclick="selectProtocol('CAN-XL')">CAN-XL</button>
             <button class="protocol-btn flexray" onclick="selectProtocol('FlexRay')">FlexRay</button>
             <button class="protocol-btn lin" onclick="selectProtocol('LIN')">LIN</button>
+            <button class="protocol-btn ethernet" onclick="selectProtocol('Ethernet')">Auto Ethernet</button>
+            <button class="protocol-btn ethernet10" onclick="selectProtocol('10BASE-T1S')">10BASE-T1S</button>
+            <button class="protocol-btn most" onclick="selectProtocol('MOST')">MOST</button>
         </div>
 
         <div class="controls">
@@ -456,24 +556,36 @@
                 <div class="input-group">
                     <label for="ecu-source">Source ECU:</label>
                     <select id="ecu-source">
+                        <option value="ADAS">ADAS Controller</option>
+                        <option value="Gateway">Central Gateway</option>
                         <option value="Engine">Engine Control</option>
-                        <option value="ABS">ABS Control</option>
-                        <option value="Airbag">Airbag System</option>
-                        <option value="Dashboard">Dashboard</option>
+                        <option value="Infotainment">Infotainment</option>
+                        <option value="Camera">Camera Module</option>
                     </select>
                 </div>
                 <div class="input-group">
-                    <label for="message-id">Message ID (hex):</label>
-                    <input type="text" id="message-id" value="0x123" placeholder="e.g., 0x123">
+                    <label for="message-type">Message Type:</label>
+                    <select id="message-type">
+                        <option value="data">Data Frame</option>
+                        <option value="diagnostic">Diagnostic (UDS)</option>
+                        <option value="doip">DoIP (Ethernet)</option>
+                        <option value="someip">SOME/IP</option>
+                        <option value="avb">AVB Stream</option>
+                    </select>
                 </div>
                 <div class="input-group">
-                    <label for="message-data">Data (hex):</label>
-                    <input type="text" id="message-data" value="01 02 03 04" placeholder="e.g., 01 02 03 04">
+                    <label for="priority">Priority/VLAN:</label>
+                    <select id="priority">
+                        <option value="high">High Priority</option>
+                        <option value="medium">Medium Priority</option>
+                        <option value="low">Low Priority</option>
+                        <option value="tsn">TSN Critical</option>
+                    </select>
                 </div>
             </div>
             <button class="btn-send" onclick="transmitMessage()">Transmit Message</button>
-            <button class="btn-send" style="background: linear-gradient(135deg, #f093fb, #f5576c);" onclick="startDiagnostic()">Send Diagnostic (UDS)</button>
-            <button class="btn-send" style="background: linear-gradient(135deg, #43e97b, #38f9d7);" onclick="simulateError()">Inject Error Frame</button>
+            <button class="btn-send" style="background: linear-gradient(135deg, #f093fb, #f5576c);" onclick="startDiagnostic()">Send Diagnostic</button>
+            <button class="btn-send" style="background: linear-gradient(135deg, #43e97b, #38f9d7);" onclick="simulateGateway()">Gateway Routing</button>
         </div>
 
         <div class="main-content">
@@ -488,8 +600,8 @@
                     <span class="spec-value" id="max-data">8 bytes</span>
                 </div>
                 <div class="spec-item">
-                    <span class="spec-label">ID Bits:</span>
-                    <span class="spec-value" id="id-bits">11/29 bits</span>
+                    <span class="spec-label">Latency:</span>
+                    <span class="spec-value" id="latency">< 1ms</span>
                 </div>
                 <div class="spec-item">
                     <span class="spec-label">Topology:</span>
@@ -506,6 +618,10 @@
                 <div class="spec-item">
                     <span class="spec-label">Applications:</span>
                     <span class="spec-value" id="applications">Powertrain, Body</span>
+                </div>
+                <div class="spec-item">
+                    <span class="spec-label">Standard:</span>
+                    <span class="spec-value" id="standard">ISO 11898</span>
                 </div>
             </div>
 
@@ -580,18 +696,20 @@
                 <div class="protocol-info" style="margin-bottom: 20px;">
                     <h3>ECU Network</h3>
                     <div class="ecu-grid">
-                        <div class="ecu-node" id="ecu-engine">Engine</div>
-                        <div class="ecu-node" id="ecu-abs">ABS</div>
-                        <div class="ecu-node" id="ecu-airbag">Airbag</div>
-                        <div class="ecu-node" id="ecu-dashboard">Dashboard</div>
-                        <div class="ecu-node" id="ecu-transmission">Transmission</div>
-                        <div class="ecu-node" id="ecu-body">Body Control</div>
+                        <div class="ecu-node" id="ecu-adas">ADAS<span class="network-type-badge">ETH</span></div>
+                        <div class="ecu-node" id="ecu-gateway">Gateway<span class="network-type-badge">ALL</span></div>
+                        <div class="ecu-node" id="ecu-engine">Engine<span class="network-type-badge">CAN</span></div>
+                        <div class="ecu-node" id="ecu-infotainment">Infotainment<span class="network-type-badge">MOST</span></div>
+                        <div class="ecu-node" id="ecu-camera">Camera<span class="network-type-badge">ETH</span></div>
+                        <div class="ecu-node" id="ecu-radar">Radar<span class="network-type-badge">CAN</span></div>
+                        <div class="ecu-node" id="ecu-body">Body<span class="network-type-badge">LIN</span></div>
+                        <div class="ecu-node" id="ecu-tcu">TCU<span class="network-type-badge">ETH</span></div>
                     </div>
                 </div>
                 
                 <div class="protocol-info">
-                    <h3>Frame Structure</h3>
-                    <div id="frame-structure" style="font-family: monospace; font-size: 0.9em; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                    <h3>Frame/Packet Structure</h3>
+                    <div id="frame-structure" style="font-family: monospace; font-size: 0.85em; padding: 10px; background: #f8f9fa; border-radius: 5px; overflow-x: auto;">
                         <!-- Frame structure will be displayed here -->
                     </div>
                 </div>
@@ -609,37 +727,26 @@
         </div>
 
         <div class="timing-diagram">
-            <h3>📈 Bus Signals</h3>
-            <div class="signal-line">
-                <span class="signal-label" id="signal-1-label">CAN_H:</span>
-                <div class="signal-wave">
-                    <div class="signal-pulse" style="width: 50px;"></div>
-                </div>
-            </div>
-            <div class="signal-line">
-                <span class="signal-label" id="signal-2-label">CAN_L:</span>
-                <div class="signal-wave">
-                    <div class="signal-pulse" style="width: 50px; animation-delay: 0.5s;"></div>
-                </div>
-            </div>
-            <div class="signal-line" id="signal-3-line">
-                <span class="signal-label" id="signal-3-label">Differential:</span>
-                <div class="signal-wave">
-                    <div class="signal-pulse" style="width: 50px; animation-delay: 1s;"></div>
-                </div>
+            <h3>📈 Physical Layer Signals</h3>
+            <div id="signal-container">
+                <!-- Dynamic signal lines will be added here -->
             </div>
         </div>
 
         <div class="comparison-table">
-            <h3>🔄 Protocol Comparison</h3>
+            <h3>🔄 Complete Protocol Comparison</h3>
             <table>
                 <thead>
                     <tr>
                         <th>Feature</th>
                         <th>CAN</th>
                         <th>CAN-FD</th>
+                        <th>CAN-XL</th>
                         <th>FlexRay</th>
                         <th>LIN</th>
+                        <th>Auto Ethernet</th>
+                        <th>10BASE-T1S</th>
+                        <th>MOST</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -647,43 +754,78 @@
                         <td>Max Speed</td>
                         <td>1 Mbps</td>
                         <td>8 Mbps</td>
+                        <td>20 Mbps</td>
                         <td>10 Mbps</td>
                         <td>20 kbps</td>
+                        <td>1 Gbps</td>
+                        <td>10 Mbps</td>
+                        <td>150 Mbps</td>
                     </tr>
                     <tr>
-                        <td>Max Data Bytes</td>
-                        <td>8</td>
-                        <td>64</td>
-                        <td>254</td>
-                        <td>8</td>
+                        <td>Max Data</td>
+                        <td>8 bytes</td>
+                        <td>64 bytes</td>
+                        <td>2048 bytes</td>
+                        <td>254 bytes</td>
+                        <td>8 bytes</td>
+                        <td>1500 bytes</td>
+                        <td>1500 bytes</td>
+                        <td>Streaming</td>
+                    </tr>
+                    <tr>
+                        <td>Topology</td>
+                        <td>Bus</td>
+                        <td>Bus</td>
+                        <td>Bus</td>
+                        <td>Bus/Star</td>
+                        <td>Bus</td>
+                        <td>Point-to-Point</td>
+                        <td>Multi-drop</td>
+                        <td>Ring</td>
                     </tr>
                     <tr>
                         <td>Deterministic</td>
                         <td class="feature-no">No</td>
                         <td class="feature-no">No</td>
+                        <td class="feature-partial">Improved</td>
                         <td class="feature-yes">Yes</td>
-                        <td class="feature-partial">Partial</td>
+                        <td class="feature-partial">Schedule</td>
+                        <td class="feature-yes">TSN</td>
+                        <td class="feature-partial">PLCA</td>
+                        <td class="feature-yes">Yes</td>
                     </tr>
                     <tr>
-                        <td>Fault Tolerance</td>
-                        <td class="feature-partial">Basic</td>
-                        <td class="feature-partial">Basic</td>
-                        <td class="feature-yes">Dual Channel</td>
+                        <td>Power over Data</td>
+                        <td class="feature-no">No</td>
+                        <td class="feature-no">No</td>
+                        <td class="feature-no">No</td>
+                        <td class="feature-no">No</td>
+                        <td class="feature-yes">Yes</td>
+                        <td class="feature-yes">PoDL</td>
+                        <td class="feature-yes">PoDL</td>
                         <td class="feature-no">No</td>
                     </tr>
                     <tr>
                         <td>Cost</td>
                         <td class="feature-yes">Low</td>
                         <td class="feature-yes">Low-Med</td>
+                        <td class="feature-partial">Medium</td>
                         <td class="feature-no">High</td>
                         <td class="feature-yes">Very Low</td>
+                        <td class="feature-no">High</td>
+                        <td class="feature-partial">Medium</td>
+                        <td class="feature-no">High</td>
                     </tr>
                     <tr>
                         <td>Typical Use</td>
                         <td>Powertrain</td>
-                        <td>ADAS, Infotainment</td>
-                        <td>Safety-Critical</td>
-                        <td>Body Electronics</td>
+                        <td>ADAS</td>
+                        <td>Backbone</td>
+                        <td>Safety</td>
+                        <td>Body</td>
+                        <td>Backbone, ADAS</td>
+                        <td>Zonal Arch</td>
+                        <td>Infotainment</td>
                     </tr>
                 </tbody>
             </table>
@@ -699,11 +841,12 @@
                 title: 'CAN Protocol',
                 speed: '1 Mbps',
                 maxData: '8 bytes',
-                idBits: '11/29 bits',
+                latency: '< 1ms',
                 topology: 'Bus',
                 access: 'CSMA/CA',
                 errorDetect: 'CRC-15',
                 applications: 'Powertrain, Body',
+                standard: 'ISO 11898',
                 layers: {
                     7: { used: true, protocol: 'UDS, OBD-II, J1939' },
                     6: { used: true, protocol: 'Data Encoding' },
@@ -718,49 +861,72 @@
                 title: 'CAN-FD Protocol',
                 speed: '8 Mbps (data)',
                 maxData: '64 bytes',
-                idBits: '11/29 bits',
+                latency: '< 1ms',
                 topology: 'Bus',
                 access: 'CSMA/CA + BRS',
                 errorDetect: 'CRC-17/21',
                 applications: 'ADAS, Infotainment',
+                standard: 'ISO 11898-1:2015',
                 layers: {
                     7: { used: true, protocol: 'UDS, DoIP, SOME/IP' },
                     6: { used: true, protocol: 'Enhanced Encoding' },
                     5: { used: true, protocol: 'Extended Sessions' },
                     4: { used: true, protocol: 'ISO-TP with FD support' },
                     3: { used: false, protocol: 'Gateway functions' },
-                    2: { used: true, protocol: 'CAN-FD Protocol (ISO 11898-1)' },
+                    2: { used: true, protocol: 'CAN-FD Protocol' },
                     1: { used: true, protocol: 'CAN_H/CAN_L with BRS' }
+                }
+            },
+            'CAN-XL': {
+                title: 'CAN-XL Protocol',
+                speed: '20 Mbps',
+                maxData: '2048 bytes',
+                latency: '< 2ms',
+                topology: 'Bus',
+                access: 'CSMA/CA Enhanced',
+                errorDetect: 'CRC-32',
+                applications: 'Backbone, Zonal Architecture',
+                standard: 'CiA 610/611',
+                layers: {
+                    7: { used: true, protocol: 'Service-Oriented Comm' },
+                    6: { used: true, protocol: 'SDU Type Field' },
+                    5: { used: true, protocol: 'Enhanced Sessions' },
+                    4: { used: true, protocol: 'Built-in Segmentation' },
+                    3: { used: true, protocol: 'VLAN-like Priority' },
+                    2: { used: true, protocol: 'CAN-XL Data Link' },
+                    1: { used: true, protocol: 'SIC/XL Transceiver' }
                 }
             },
             'FlexRay': {
                 title: 'FlexRay Protocol',
                 speed: '10 Mbps',
                 maxData: '254 bytes',
-                idBits: '11 bits',
+                latency: 'Deterministic',
                 topology: 'Bus/Star/Hybrid',
                 access: 'TDMA',
                 errorDetect: 'CRC-24',
                 applications: 'X-by-Wire, Safety',
+                standard: 'ISO 17458',
                 layers: {
                     7: { used: true, protocol: 'FIBEX, AUTOSAR' },
                     6: { used: true, protocol: 'Signal Mapping' },
                     5: { used: false, protocol: 'Not typically used' },
                     4: { used: true, protocol: 'FlexRay TP' },
                     3: { used: false, protocol: 'Not used' },
-                    2: { used: true, protocol: 'FlexRay Protocol (Dual Channel)' },
-                    1: { used: true, protocol: 'BP/BM Differential (2 channels)' }
+                    2: { used: true, protocol: 'FlexRay Protocol (Dual)' },
+                    1: { used: true, protocol: 'BP/BM Differential' }
                 }
             },
             'LIN': {
                 title: 'LIN Protocol',
                 speed: '20 kbps',
                 maxData: '8 bytes',
-                idBits: '6 bits',
+                latency: '< 10ms',
                 topology: 'Bus (Master-Slave)',
                 access: 'Master-controlled',
                 errorDetect: 'Checksum',
                 applications: 'Door, Seat, Mirror',
+                standard: 'ISO 17987',
                 layers: {
                     7: { used: true, protocol: 'LIN Diagnostics' },
                     6: { used: false, protocol: 'Not used' },
@@ -768,7 +934,67 @@
                     4: { used: false, protocol: 'Not used' },
                     3: { used: false, protocol: 'Not used' },
                     2: { used: true, protocol: 'LIN 2.2 Protocol' },
-                    1: { used: true, protocol: 'Single Wire (UART-based)' }
+                    1: { used: true, protocol: 'Single Wire UART' }
+                }
+            },
+            'Ethernet': {
+                title: 'Automotive Ethernet',
+                speed: '100M/1G/10G bps',
+                maxData: '1500 bytes (Jumbo: 9000)',
+                latency: 'TSN: < 100μs',
+                topology: 'Point-to-Point/Switch',
+                access: 'CSMA/CD (Full-Duplex)',
+                errorDetect: 'CRC-32',
+                applications: 'Backbone, ADAS, Infotainment',
+                standard: 'IEEE 802.3/802.1',
+                layers: {
+                    7: { used: true, protocol: 'SOME/IP, DoIP, AVB/TSN' },
+                    6: { used: true, protocol: 'Serialization, RPC' },
+                    5: { used: true, protocol: 'Socket APIs' },
+                    4: { used: true, protocol: 'TCP/UDP' },
+                    3: { used: true, protocol: 'IPv4/IPv6, VLAN' },
+                    2: { used: true, protocol: 'Ethernet MAC, TSN' },
+                    1: { used: true, protocol: '100/1000BASE-T1' }
+                }
+            },
+            '10BASE-T1S': {
+                title: '10BASE-T1S Ethernet',
+                speed: '10 Mbps',
+                maxData: '1500 bytes',
+                latency: 'PLCA: Deterministic',
+                topology: 'Multi-drop Bus',
+                access: 'PLCA (PHY-Level Collision Avoidance)',
+                errorDetect: 'CRC-32',
+                applications: 'Zonal Architecture, Sensors',
+                standard: 'IEEE 802.3cg',
+                layers: {
+                    7: { used: true, protocol: 'Lightweight Services' },
+                    6: { used: true, protocol: 'Data Serialization' },
+                    5: { used: true, protocol: 'Session Management' },
+                    4: { used: true, protocol: 'UDP (mainly)' },
+                    3: { used: true, protocol: 'IPv6/IPv4' },
+                    2: { used: true, protocol: 'Ethernet with PLCA' },
+                    1: { used: true, protocol: 'Single Pair, Multi-drop' }
+                }
+            },
+            'MOST': {
+                title: 'MOST (Media Oriented Systems Transport)',
+                speed: '25/50/150 Mbps',
+                maxData: 'Streaming + Control',
+                latency: 'Isochronous',
+                topology: 'Ring',
+                access: 'TDMA',
+                errorDetect: 'CRC + FEC',
+                applications: 'Infotainment, Audio/Video',
+                standard: 'MOST Cooperation',
+                layers: {
+                    7: { used: true, protocol: 'MOST High Protocol' },
+                    6: { used: true, protocol: 'Audio/Video Codecs' },
+                    5: { used: true, protocol: 'Connection Management' },
+                    4: { used: true, protocol: 'Streaming Channels' },
+                    3: { used: true, protocol: 'MOST Network Services' },
+                    2: { used: true, protocol: 'MOST Data Link' },
+                    1: { used: true, protocol: 'Optical/Electrical Ring' }
                 }
             }
         };
@@ -779,7 +1005,14 @@
             // Update button states
             document.querySelectorAll('.protocol-btn').forEach(btn => {
                 btn.classList.remove('active');
-                if (btn.textContent === protocol || btn.textContent === protocol.replace('-', '')) {
+            });
+            
+            // Find and activate the correct button
+            document.querySelectorAll('.protocol-btn').forEach(btn => {
+                if (btn.textContent === protocol || 
+                    btn.textContent === protocol.replace('-', '') ||
+                    (protocol === 'Ethernet' && btn.textContent === 'Auto Ethernet') ||
+                    (protocol === '10BASE-T1S' && btn.textContent === '10BASE-T1S')) {
                     btn.classList.add('active');
                 }
             });
@@ -789,11 +1022,12 @@
             document.getElementById('protocol-title').textContent = specs.title;
             document.getElementById('speed').textContent = specs.speed;
             document.getElementById('max-data').textContent = specs.maxData;
-            document.getElementById('id-bits').textContent = specs.idBits;
+            document.getElementById('latency').textContent = specs.latency;
             document.getElementById('topology').textContent = specs.topology;
             document.getElementById('access').textContent = specs.access;
             document.getElementById('error-detect').textContent = specs.errorDetect;
             document.getElementById('applications').textContent = specs.applications;
+            document.getElementById('standard').textContent = specs.standard;
             
             // Update OSI layers
             for (let i = 1; i <= 7; i++) {
@@ -809,89 +1043,154 @@
                 }
             }
             
-            // Update signal labels
-            updateSignalLabels(protocol);
+            // Update signal display
+            updateSignalDisplay(protocol);
             
             // Update frame structure
             updateFrameStructure(protocol);
         }
 
-        function updateSignalLabels(protocol) {
-            const signal1 = document.getElementById('signal-1-label');
-            const signal2 = document.getElementById('signal-2-label');
-            const signal3 = document.getElementById('signal-3-label');
-            const signal3Line = document.getElementById('signal-3-line');
+        function updateSignalDisplay(protocol) {
+            const container = document.getElementById('signal-container');
+            container.innerHTML = '';
+            
+            let signals = [];
             
             switch(protocol) {
                 case 'CAN':
                 case 'CAN-FD':
-                    signal1.textContent = 'CAN_H:';
-                    signal2.textContent = 'CAN_L:';
-                    signal3.textContent = 'Differential:';
-                    signal3Line.style.display = 'flex';
+                case 'CAN-XL':
+                    signals = [
+                        { label: 'CAN_H:', color: '#3498db' },
+                        { label: 'CAN_L:', color: '#e74c3c' },
+                        { label: 'Differential:', color: '#2ecc71' }
+                    ];
                     break;
                 case 'FlexRay':
-                    signal1.textContent = 'BP (Ch A):';
-                    signal2.textContent = 'BM (Ch A):';
-                    signal3.textContent = 'BP/BM (Ch B):';
-                    signal3Line.style.display = 'flex';
+                    signals = [
+                        { label: 'BP (Ch A):', color: '#3498db' },
+                        { label: 'BM (Ch A):', color: '#e74c3c' },
+                        { label: 'BP (Ch B):', color: '#9b59b6' },
+                        { label: 'BM (Ch B):', color: '#f39c12' }
+                    ];
                     break;
                 case 'LIN':
-                    signal1.textContent = 'LIN Bus:';
-                    signal2.textContent = 'Ground:';
-                    signal3Line.style.display = 'none';
+                    signals = [
+                        { label: 'LIN Bus:', color: '#3498db' },
+                        { label: 'Ground:', color: '#95a5a6' }
+                    ];
+                    break;
+                case 'Ethernet':
+                case '10BASE-T1S':
+                    signals = [
+                        { label: 'MDI+:', color: '#3498db' },
+                        { label: 'MDI-:', color: '#e74c3c' },
+                        { label: 'PAM3/MLT3:', color: '#2ecc71' }
+                    ];
+                    break;
+                case 'MOST':
+                    signals = [
+                        { label: 'Optical TX:', color: '#e74c3c' },
+                        { label: 'Optical RX:', color: '#3498db' },
+                        { label: 'Control Channel:', color: '#2ecc71' },
+                        { label: 'Streaming:', color: '#f39c12' }
+                    ];
                     break;
             }
+            
+            signals.forEach((signal, index) => {
+                const signalLine = document.createElement('div');
+                signalLine.className = 'signal-line';
+                signalLine.innerHTML = `
+                    <span class="signal-label">${signal.label}</span>
+                    <div class="signal-wave">
+                        <div class="signal-pulse" style="width: ${50 + index * 10}px; background: ${signal.color}; animation-delay: ${index * 0.3}s;"></div>
+                    </div>
+                `;
+                container.appendChild(signalLine);
+            });
         }
 
         function updateFrameStructure(protocol) {
             const frameDiv = document.getElementById('frame-structure');
             
-            switch(protocol) {
-                case 'CAN':
-                    frameDiv.innerHTML = `
-                        <div style="color: #27ae60;">SOF (1)</div>
-                        <div style="color: #3498db;">ID (11/29)</div>
-                        <div style="color: #9b59b6;">RTR (1) | IDE (1) | r0 (1)</div>
-                        <div style="color: #e74c3c;">DLC (4)</div>
-                        <div style="color: #f39c12;">DATA (0-64)</div>
-                        <div style="color: #1abc9c;">CRC (15)</div>
-                        <div style="color: #34495e;">ACK (2) | EOF (7)</div>
-                    `;
-                    break;
-                case 'CAN-FD':
-                    frameDiv.innerHTML = `
-                        <div style="color: #27ae60;">SOF (1)</div>
-                        <div style="color: #3498db;">ID (11/29)</div>
-                        <div style="color: #9b59b6;">FDF (1) | BRS (1) | ESI (1)</div>
-                        <div style="color: #e74c3c;">DLC (4)</div>
-                        <div style="color: #f39c12;">DATA (0-512)</div>
-                        <div style="color: #1abc9c;">CRC (17/21)</div>
-                        <div style="color: #34495e;">ACK (2) | EOF (7)</div>
-                    `;
-                    break;
-                case 'FlexRay':
-                    frameDiv.innerHTML = `
-                        <div style="color: #27ae60;">TSS (1)</div>
-                        <div style="color: #3498db;">FSS (1) | Reserved (1)</div>
-                        <div style="color: #9b59b6;">Frame ID (11)</div>
-                        <div style="color: #e74c3c;">Payload Length (7)</div>
-                        <div style="color: #f39c12;">Header CRC (11)</div>
-                        <div style="color: #16a085;">Cycle Count (6)</div>
-                        <div style="color: #d35400;">DATA (0-254 bytes)</div>
-                        <div style="color: #8e44ad;">CRC (24)</div>
-                    `;
-                    break;
-                case 'LIN':
-                    frameDiv.innerHTML = `
-                        <div style="color: #27ae60;">Break (13 bits)</div>
-                        <div style="color: #3498db;">Sync (0x55)</div>
-                        <div style="color: #9b59b6;">ID (6 bits + 2 parity)</div>
-                        <div style="color: #f39c12;">DATA (0-8 bytes)</div>
-                        <div style="color: #1abc9c;">Checksum (8 bits)</div>
-                    `;
-                    break;
-            }
+            const structures = {
+                'CAN': `
+                    <div style="color: #27ae60;">SOF (1)</div>
+                    <div style="color: #3498db;">ID (11/29)</div>
+                    <div style="color: #9b59b6;">RTR (1) | IDE (1) | r0 (1)</div>
+                    <div style="color: #e74c3c;">DLC (4)</div>
+                    <div style="color: #f39c12;">DATA (0-64)</div>
+                    <div style="color: #1abc9c;">CRC (15)</div>
+                    <div style="color: #34495e;">ACK (2) | EOF (7)</div>
+                `,
+                'CAN-FD': `
+                    <div style="color: #27ae60;">SOF (1)</div>
+                    <div style="color: #3498db;">ID (11/29)</div>
+                    <div style="color: #9b59b6;">FDF (1) | BRS (1) | ESI (1)</div>
+                    <div style="color: #e74c3c;">DLC (4)</div>
+                    <div style="color: #f39c12;">DATA (0-512)</div>
+                    <div style="color: #1abc9c;">Stuff Count + CRC (17/21)</div>
+                    <div style="color: #34495e;">ACK (2) | EOF (7)</div>
+                `,
+                'CAN-XL': `
+                    <div style="color: #27ae60;">SOF (1)</div>
+                    <div style="color: #3498db;">Priority ID (11)</div>
+                    <div style="color: #8e44ad;">SDU Type (8)</div>
+                    <div style="color: #d35400;">VCID (8)</div>
+                    <div style="color: #e74c3c;">DLC (11)</div>
+                    <div style="color: #f39c12;">DATA (1-2048 bytes)</div>
+                    <div style="color: #1abc9c;">CRC-32</div>
+                    <div style="color: #34495e;">ACK | EOF</div>
+                `,
+                'FlexRay': `
+                    <div style="color: #27ae60;">TSS (1)</div>
+                    <div style="color: #3498db;">FSS (1) | Reserved (1)</div>
+                    <div style="color: #9b59b6;">Frame ID (11)</div>
+                    <div style="color: #e74c3c;">Payload Length (7)</div>
+                    <div style="color: #f39c12;">Header CRC (11)</div>
+                    <div style="color: #16a085;">Cycle Count (6)</div>
+                    <div style="color: #d35400;">DATA (0-254 bytes)</div>
+                    <div style="color: #8e44ad;">CRC (24)</div>
+                `,
+                'LIN': `
+                    <div style="color: #27ae60;">Break (13 bits)</div>
+                    <div style="color: #3498db;">Sync (0x55)</div>
+                    <div style="color: #9b59b6;">ID (6 bits + 2 parity)</div>
+                    <div style="color: #f39c12;">DATA (0-8 bytes)</div>
+                    <div style="color: #1abc9c;">Checksum (8 bits)</div>
+                `,
+                'Ethernet': `
+                    <div style="color: #27ae60;">Preamble (7)</div>
+                    <div style="color: #3498db;">SFD (1)</div>
+                    <div style="color: #9b59b6;">Dest MAC (6)</div>
+                    <div style="color: #e67e22;">Src MAC (6)</div>
+                    <div style="color: #8e44ad;">VLAN Tag (4 optional)</div>
+                    <div style="color: #e74c3c;">Type/Length (2)</div>
+                    <div style="color: #f39c12;">Payload (46-1500)</div>
+                    <div style="color: #1abc9c;">FCS/CRC-32 (4)</div>
+                `,
+                '10BASE-T1S': `
+                    <div style="color: #27ae60;">PLCA Beacon</div>
+                    <div style="color: #3498db;">Preamble (7)</div>
+                    <div style="color: #9b59b6;">SFD (1)</div>
+                    <div style="color: #e74c3c;">MAC Header (14)</div>
+                    <div style="color: #f39c12;">Payload (46-1500)</div>
+                    <div style="color: #1abc9c;">FCS (4)</div>
+                    <div style="color: #95a5a6;">PLCA Transmit Opportunity</div>
+                `,
+                'MOST': `
+                    <div style="color: #27ae60;">Preamble</div>
+                    <div style="color: #3498db;">Boundary Descriptor</div>
+                    <div style="color: #9b59b6;">Admin Data (2 bytes)</div>
+                    <div style="color: #e74c3c;">Sync Channel (60 bytes)</div>
+                    <div style="color: #f39c12;">Async Channel (variable)</div>
+                    <div style="color: #16a085;">Control Channel (2 bytes)</div>
+                    <div style="color: #8e44ad;">Status</div>
+                `
+            };
+            
+            frameDiv.innerHTML = structures[protocol] || '<div>Frame structure not defined</div>';
         }
 
         function transmitMessage() {
@@ -899,8 +1198,8 @@
             
             transmissionActive = true;
             const source = document.getElementById('ecu-source').value;
-            const messageId = document.getElementById('message-id').value;
-            const messageData = document.getElementById('message-data').value;
+            const messageType = document.getElementById('message-type').value;
+            const priority = document.getElementById('priority').value;
             
             // Animate source ECU
             const sourceEcu = document.getElementById(`ecu-${source.toLowerCase()}`);
@@ -911,16 +1210,14 @@
             // Simulate layer processing
             const specs = protocolSpecs[currentProtocol];
             let currentLayer = 7;
-            let encapsulatedData = messageData;
             
             const processLayer = () => {
                 if (currentLayer < 1) {
-                    // Transmission complete
                     transmissionActive = false;
                     if (sourceEcu) {
                         sourceEcu.classList.remove('active');
                     }
-                    showBitStream();
+                    showCompletionMessage();
                     return;
                 }
                 
@@ -930,51 +1227,13 @@
                     layerEl.classList.add('active');
                     
                     // Update flow visualization
-                    let flowText = '';
-                    switch(currentLayer) {
-                        case 7:
-                            flowText = `Application Layer: Service Request [${messageId}]<br>Data: ${encapsulatedData}`;
-                            break;
-                        case 6:
-                            flowText = `Presentation Layer: Encoding data...<br>Format: Motorola (Big-Endian)`;
-                            break;
-                        case 5:
-                            flowText = `Session Layer: Session established<br>Session ID: 0x01`;
-                            break;
-                        case 4:
-                            if (currentProtocol === 'LIN') {
-                                flowText = `Transport Layer: Not used in LIN`;
-                            } else {
-                                flowText = `Transport Layer: Single Frame<br>PCI: 0x0${messageData.split(' ').length}`;
-                            }
-                            break;
-                        case 3:
-                            flowText = `Network Layer: ${specs.layers[3].protocol}`;
-                            break;
-                        case 2:
-                            flowText = `Data Link Layer: ${currentProtocol} Frame<br>ID: ${messageId}, DLC: ${messageData.split(' ').length}`;
-                            encapsulatedData = `[${messageId}][DLC:${messageData.split(' ').length}] ${encapsulatedData}`;
-                            break;
-                        case 1:
-                            flowText = `Physical Layer: Transmitting bits...<br>`;
-                            if (currentProtocol === 'CAN' || currentProtocol === 'CAN-FD') {
-                                flowText += `CAN_H: 3.5V (dominant) / 2.5V (recessive)<br>`;
-                                flowText += `CAN_L: 1.5V (dominant) / 2.5V (recessive)`;
-                            } else if (currentProtocol === 'FlexRay') {
-                                flowText += `Channel A & B: Differential signaling`;
-                            } else if (currentProtocol === 'LIN') {
-                                flowText += `Single wire: 12V (recessive) / 0V (dominant)`;
-                            }
-                            break;
-                    }
-                    
-                    document.getElementById('flow-viz').innerHTML = flowText;
+                    updateFlowVisualization(currentLayer, messageType, priority);
                     
                     setTimeout(() => {
                         layerEl.classList.remove('active');
                         currentLayer--;
                         processLayer();
-                    }, 800);
+                    }, 600);
                 } else {
                     currentLayer--;
                     processLayer();
@@ -984,64 +1243,95 @@
             processLayer();
         }
 
-        function showBitStream() {
-            const bitStreamDiv = document.getElementById('bit-stream');
-            bitStreamDiv.innerHTML = '';
+        function updateFlowVisualization(layer, messageType, priority) {
+            const flowDiv = document.getElementById('flow-viz');
+            let content = '';
             
-            // Generate random bit pattern
-            const bitCount = currentProtocol === 'FlexRay' ? 40 : 
-                           currentProtocol === 'CAN-FD' ? 30 : 
-                           currentProtocol === 'LIN' ? 15 : 20;
+            const layerDescriptions = {
+                7: `<strong>Application Layer:</strong> ${messageType.toUpperCase()} message initiated<br>`,
+                6: `<strong>Presentation Layer:</strong> Data serialization and encoding<br>`,
+                5: `<strong>Session Layer:</strong> Session established, ID: 0x${Math.floor(Math.random() * 65535).toString(16)}<br>`,
+                4: `<strong>Transport Layer:</strong> ${currentProtocol.includes('Ethernet') ? 'TCP/UDP' : 'Segmentation'}<br>`,
+                3: `<strong>Network Layer:</strong> ${currentProtocol.includes('Ethernet') ? 'IP Routing' : 'Address Resolution'}<br>`,
+                2: `<strong>Data Link Layer:</strong> Frame assembly, Priority: ${priority}<br>`,
+                1: `<strong>Physical Layer:</strong> Transmitting electrical/optical signals<br>`
+            };
             
-            for (let i = 0; i < bitCount; i++) {
-                const bit = document.createElement('div');
-                bit.className = 'bit';
-                const value = Math.random() > 0.5 ? 1 : 0;
-                bit.textContent = value;
-                bit.classList.add(value === 0 ? 'dominant' : 'recessive');
-                bit.style.animationDelay = `${i * 0.05}s`;
-                bit.style.animation = 'pulse-move 0.5s ease-in-out';
-                bitStreamDiv.appendChild(bit);
+            content = layerDescriptions[layer] || '';
+            
+            if (currentProtocol.includes('Ethernet')) {
+                content += `Protocol Stack: Ethernet/${messageType === 'doip' ? 'DoIP' : messageType === 'someip' ? 'SOME/IP' : 'TCP/IP'}`;
+            } else if (currentProtocol === 'MOST') {
+                content += `Channel: ${messageType === 'avb' ? 'Streaming' : 'Control'}`;
             }
+            
+            flowDiv.innerHTML = content;
+        }
+
+        function showCompletionMessage() {
+            const flowDiv = document.getElementById('flow-viz');
+            flowDiv.innerHTML = `
+                <div style="color: #27ae60; font-weight: bold;">✓ Transmission Complete!</div>
+                <div>Protocol: ${currentProtocol}</div>
+                <div>Layers Used: ${Object.values(protocolSpecs[currentProtocol].layers).filter(l => l.used).length} of 7</div>
+                <div>Speed: ${protocolSpecs[currentProtocol].speed}</div>
+            `;
         }
 
         function startDiagnostic() {
             const flowViz = document.getElementById('flow-viz');
-            flowViz.innerHTML = `
-                <div style="color: #27ae60; font-weight: bold;">Diagnostic Request (UDS)</div>
-                <div>Service: 0x22 (Read Data By Identifier)</div>
-                <div>DID: 0xF190 (VIN)</div>
-                <div style="margin-top: 10px; color: #3498db;">Response:</div>
-                <div>0x62 F1 90 [VIN Data: WDD1234567890123]</div>
-            `;
             
-            // Animate layers 7, 6, 5, 4 for diagnostic
+            if (currentProtocol.includes('Ethernet')) {
+                flowViz.innerHTML = `
+                    <div style="color: #27ae60; font-weight: bold;">DoIP Diagnostic Request</div>
+                    <div>Service: UDS over IP</div>
+                    <div>Target: 192.168.1.100:13400</div>
+                    <div style="margin-top: 10px;">TCP/IP Stack:</div>
+                    <div>L7: DoIP Header + UDS (0x22 Read Data)</div>
+                    <div>L4: TCP Port 13400</div>
+                    <div>L3: IPv4 Routing</div>
+                    <div>L2: Ethernet Frame with VLAN Priority</div>
+                `;
+            } else {
+                flowViz.innerHTML = `
+                    <div style="color: #27ae60; font-weight: bold;">Classic Diagnostic Request (UDS)</div>
+                    <div>Service: 0x22 (Read Data By Identifier)</div>
+                    <div>DID: 0xF190 (VIN)</div>
+                    <div style="margin-top: 10px;">Response:</div>
+                    <div>0x62 F1 90 [VIN Data]</div>
+                `;
+            }
+            
+            // Animate diagnostic layers
             [7, 6, 5, 4].forEach((layer, index) => {
-                setTimeout(() => {
-                    const layerEl = document.getElementById(`layer-${layer}`);
-                    layerEl.classList.add('active');
-                    setTimeout(() => layerEl.classList.remove('active'), 500);
-                }, index * 200);
+                if (protocolSpecs[currentProtocol].layers[layer].used) {
+                    setTimeout(() => {
+                        const layerEl = document.getElementById(`layer-${layer}`);
+                        layerEl.classList.add('active');
+                        setTimeout(() => layerEl.classList.remove('active'), 500);
+                    }, index * 200);
+                }
             });
         }
 
-        function simulateError() {
+        function simulateGateway() {
             const flowViz = document.getElementById('flow-viz');
             flowViz.innerHTML = `
-                <div style="color: #e74c3c; font-weight: bold;">ERROR FRAME DETECTED!</div>
-                <div>Error Type: Bit Error</div>
-                <div>Error Counter: TX++ (now 5)</div>
-                <div style="margin-top: 10px;">Error Frame Structure:</div>
-                <div style="font-family: monospace;">000000 (Error Flag) | 11111111 (Error Delimiter)</div>
+                <div style="color: #f39c12; font-weight: bold;">Gateway Routing Simulation</div>
+                <div>Source: CAN Network (500 kbps)</div>
+                <div>Destination: Ethernet Network (100 Mbps)</div>
+                <div style="margin-top: 10px;">Protocol Translation:</div>
+                <div>CAN Frame → Gateway Buffer → IP Packet</div>
+                <div>Adding Ethernet/IP headers...</div>
+                <div>Routing to target subnet...</div>
             `;
             
-            // Flash layer 2
-            const layer2 = document.getElementById('layer-2');
-            layer2.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
-            setTimeout(() => {
-                layer2.style.background = '';
-                selectProtocol(currentProtocol); // Reset styles
-            }, 1000);
+            // Animate gateway ECU
+            const gatewayEcu = document.getElementById('ecu-gateway');
+            if (gatewayEcu) {
+                gatewayEcu.classList.add('active');
+                setTimeout(() => gatewayEcu.classList.remove('active'), 2000);
+            }
         }
 
         function showLayerDetails(layer) {
@@ -1053,7 +1343,7 @@
             
             const layerNames = {
                 7: 'Application Layer',
-                6: 'Presentation Layer', 
+                6: 'Presentation Layer',
                 5: 'Session Layer',
                 4: 'Transport Layer',
                 3: 'Network Layer',
@@ -1061,47 +1351,7 @@
                 1: 'Physical Layer'
             };
             
-            const layerDetails = {
-                'CAN': {
-                    7: 'Implements diagnostic protocols like UDS (ISO 14229) and OBD-II for vehicle diagnostics',
-                    6: 'Handles data representation and encoding (Intel/Motorola byte order)',
-                    5: 'Manages diagnostic sessions and security access levels',
-                    4: 'ISO-TP provides segmentation for messages larger than 8 bytes',
-                    3: 'Limited use - mainly for gateway routing between different CAN networks',
-                    2: 'CAN protocol with CSMA/CA arbitration, error detection, and acknowledgment',
-                    1: 'Differential signaling on CAN_H and CAN_L wires, typically 120Ω terminated'
-                },
-                'CAN-FD': {
-                    7: 'Supports advanced protocols like DoIP and SOME/IP for modern vehicles',
-                    6: 'Enhanced data encoding with support for larger payloads',
-                    5: 'Extended session management for complex diagnostic operations',
-                    4: 'ISO-TP with CAN-FD extensions for up to 4095 byte messages',
-                    3: 'Gateway functions for routing between CAN, CAN-FD, and Ethernet',
-                    2: 'CAN-FD protocol with flexible data rate and up to 64 byte payload',
-                    1: 'Same physical layer as CAN but with Bit Rate Switching capability'
-                },
-                'FlexRay': {
-                    7: 'AUTOSAR and FIBEX database definitions for safety-critical applications',
-                    6: 'Signal mapping and data transformation for redundant channels',
-                    5: 'Not typically implemented in FlexRay',
-                    4: 'FlexRay Transport Protocol for large data transfers',
-                    3: 'Not used in FlexRay architecture',
-                    2: 'Deterministic TDMA protocol with static and dynamic segments',
-                    1: 'Dual-channel redundant communication at 10 Mbps per channel'
-                },
-                'LIN': {
-                    7: 'Basic diagnostic services and node configuration',
-                    6: 'Not used in LIN',
-                    5: 'Not used in LIN',
-                    4: 'Not used in LIN',
-                    3: 'Not used in LIN',
-                    2: 'Master-slave protocol with scheduled frame transmission',
-                    1: 'Single-wire UART-based communication with dominant/recessive states'
-                }
-            };
-            
-            const details = layerDetails[currentProtocol][layer];
-            alert(`${layerNames[layer]} in ${currentProtocol}:\n\n${specs.layers[layer].protocol}\n\n${details}`);
+            alert(`${layerNames[layer]} in ${currentProtocol}:\n\n${specs.layers[layer].protocol}\n\nClick OK to continue`);
         }
 
         // Initialize with CAN
