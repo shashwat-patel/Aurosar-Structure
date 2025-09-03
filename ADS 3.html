@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AUTOSAR Diagnostic Architecture - Technical Deep Dive</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background: #0a0e27;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .technical-container {
+            width: 100%;
+            max-width: 1900px;
+            height: 95vh;
+            background: #1a1f36;
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0, 255, 136, 0.3);
+        }
+
+        .header {
+            background: linear-gradient(90deg, #0a0e27 0%, #1a1f36 50%, #0a0e27 100%);
+            border: 1px solid #00ff88;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #00ff88;
+            font-size: 1.8em;
+            font-weight: normal;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .header p {
+            color: #4db8ff;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .main-content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1.2fr 2fr 1fr;
+            gap: 15px;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Technical Specifications Panel */
+        .tech-specs {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .module-spec {
+            background: #0f1419;
+            border: 1px solid #00ff88;
+            border-radius: 5px;
+            padding: 12px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .module-header {
+            color: #00ff88;
+            font-size: 1.2em;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #00ff88;
+            padding-bottom: 5px;
+        }
+
+        .spec-item {
+            color: #4db8ff;
+            font-size: 0.75em;
+            margin: 3px 0;
+            padding-left: 10px;
+        }
+
+        .spec-label {
+            color: #888;
+        }
+
+        .spec-value {
+            color: #ffa500;
+        }
+
+        /* Center Architecture Diagram */
+        .architecture-panel {
+            background: #0f1419;
+            border: 1px solid #00ff88;
+            border-radius: 5px;
+            padding: 15px;
+            position: relative;
+            overflow: auto;
+        }
+
+        /* Protocol Details Panel */
+        .protocol-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .protocol-box {
+            background: #0f1419;
+            border: 1px solid #4db8ff;
+            border-radius: 5px;
+            padding: 10px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .protocol-title {
+            color: #4db8ff;
+            font-size: 1em;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #4db8ff;
+            padding-bottom: 5px;
+        }
+
+        .protocol-detail {
+            color: #aaa;
+            font-size: 0.7em;
+            margin: 2px 0;
+            font-family: 'Consolas', monospace;
+        }
+
+        /* Code-like styling */
+        .code-block {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 8px;
+            margin: 5px 0;
+            font-size: 0.7em;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+
+        .highlight-red { color: #ff4444; }
+        .highlight-blue { color: #4db8ff; }
+        .highlight-green { color: #00ff88; }
+        .highlight-yellow { color: #ffa500; }
+
+        /* Data structure tables */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 0.7em;
+        }
+
+        .data-table th {
+            background: #1a1f36;
+            color: #00ff88;
+            padding: 5px;
+            border: 1px solid #333;
+            text-align: left;
+        }
+
+        .data-table td {
+            background: #0a0e27;
+            color: #aaa;
+            padding: 5px;
+            border: 1px solid #333;
+        }
+
+        /* Memory layout */
+        .memory-block {
+            display: flex;
+            margin: 5px 0;
+            font-size: 0.65em;
+        }
+
+        .memory-address {
+            background: #1a1f36;
+            color: #4db8ff;
+            padding: 2px 5px;
+            border: 1px solid #333;
+            width: 80px;
+        }
+
+        .memory-content {
+            background: #000;
+            color: #0f0;
+            padding: 2px 5px;
+            border: 1px solid #333;
+            flex: 1;
+        }
+
+        /* Status indicators */
+        .status-led {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .led-active {
+            background: #00ff00;
+            box-shadow: 0 0 5px #00ff00;
+            animation: pulse 1s infinite;
+        }
+
+        .led-error {
+            background: #ff0000;
+            box-shadow: 0 0 5px #ff0000;
+            animation: blink 0.5s infinite;
+        }
+
+        .led-comm {
+            background: #4db8ff;
+            box-shadow: 0 0 5px #4db8ff;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0e27;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #00ff88;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00cc66;
+        }
+    </style>
+</head>
+<body>
+    <div class="technical-container">
+        <div class="header">
+            <h1>AUTOSAR Classic Platform - Diagnostic Stack Architecture</h1>
+            <p>DEM (Diagnostic Event Manager) | DCM (Diagnostic Communication Manager) | FIM (Function Inhibition Manager)</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Left Panel: Technical Specifications -->
+            <div class="tech-specs">
+                <div class="module-spec">
+                    <div class="module-header">DEM - Diagnostic Event Manager v4.4.0</div>
+                    <div class="spec-item"><span class="spec-label">Module ID:</span> <span class="spec-value">0x36 (54)</span></div>
+                    <div class="spec-item"><span class="spec-label">BSW Layer:</span> <span class="spec-value">Service Layer</span></div>
+                    <div class="spec-item"><span class="spec-label">Memory:</span> <span class="spec-value">NvM Block: 2KB-64KB</span></div>
+                    <div class="spec-item"><span class="spec-label">DTC Format:</span> <span class="spec-value">ISO 14229-1 (3-byte)</span></div>
+                    
+                    <div class="code-block">
+typedef struct {
+  uint32_t EventId;        /* 0x00-0xFFFF */
+  uint8_t  EventStatus;    /* UDS Status Byte */
+  uint8_t  EventPriority;  /* 0x01-0xFF */
+  uint16_t DebounceCounter;
+  uint8_t  FaultCounter;
+  uint8_t  AgingCounter;
+  uint32_t TimeStamp;
+  FreezeFrameClass_t FreezeFrame;
+  ExtDataClass_t ExtendedData;
+} Dem_EventMemoryEntry;
+                    </div>
+
+                    <div class="spec-item"><span class="spec-label">Status Byte:</span></div>
+                    <div class="memory-block">
+                        <div class="memory-address">Bit 7-0:</div>
+                        <div class="memory-content">TF|TFTOC|PDTC|CDTC|TNCSLC|TFSLC|TNCTOC|WIR</div>
+                    </div>
+
+                    <div class="spec-item"><span class="spec-label">Event Debouncing:</span></div>
+                    <div class="code-block">
+/* Counter-based debouncing */
+if (FaultDetected) {
+  if (++DebounceCounter >= DEM_DEBOUNCE_THRESHOLD) {
+    Dem_SetEventStatus(EventId, DEM_EVENT_STATUS_FAILED);
+  }
+} else {
+  DebounceCounter = 0;
+}
+                    </div>
+
+                    <div class="spec-item"><span class="spec-label">Storage Conditions:</span></div>
+                    <div class="spec-item">• Primary Memory: 100-255 events</div>
+                    <div class="spec-item">• Mirror Memory: 10-50 events</div>
+                    <div class="spec-item">• Freeze Frame: Max 254 records</div>
+                    <div class="spec-item">• Extended Data: 1-255 records</div>
+                </div>
+
+                <div class="module-spec">
+                    <div class="module-header">DCM - Diagnostic Communication Manager v5.0.0</div>
+                    <div class="spec-item"><span class="spec-label">Module ID:</span> <span class="spec-value">0x35 (53)</span></div>
+                    <div class="spec-item"><span class="spec-label">Protocol:</span> <span class="spec-value">ISO 14229-1 (UDS)</span></div>
+                    <div class="spec-item"><span class="spec-label">Transport:</span> <span class="spec-value">ISO-TP (ISO 15765-2)</span></div>
+                    
+                    <table class="data-table">
+                        <tr><th>Service</th><th>SID</th><th>Sub-Function</th></tr>
+                        <tr><td>DiagnosticSession</td><td>0x10</td><td>0x01,0x02,0x03</td></tr>
+                        <tr><td>ECUReset</td><td>0x11</td><td>0x01,0x03,0x04</td></tr>
+                        <tr><td>ClearDiagInfo</td><td>0x14</td><td>0xFFFFFF</td></tr>
+                        <tr><td>ReadDTCInfo</td><td>0x19</td><td>0x01-0x0F</td></tr>
+                        <tr><td>ReadDataByID</td><td>0x22</td><td>DID: 0x0000-0xFFFF</td></tr>
+                        <tr><td>SecurityAccess</td><td>0x27</td><td>Seed/Key</td></tr>
+                        <tr><td>CommControl</td><td>0x28</td><td>0x00-0x03</td></tr>
+                        <tr><td>TesterPresent</td><td>0x3E</td><td>0x00,0x80</td></tr>
+                        <tr><td>ControlDTCSetting</td><td>0x85</td><td>0x01,0x02</td></tr>
+                    </table>
+
+                    <div class="code-block">
+/* DCM PDU Router Configuration */
+typedef struct {
+  PduIdType RxPduId;      /* 0x700-0x7FF */
+  PduIdType TxPduId;      /* Response ID */
+  uint8_t Protocol;       /* UDS/OBD */
+  uint16_t BufferSize;    /* 4095 bytes max */
+  uint32_t P2ServerMax;   /* 50ms default */
+  uint32_t P2StarServerMax; /* 5000ms */
+} Dcm_ConfigType;
+                    </div>
+                </div>
+
+                <div class="module-spec">
+                    <div class="module-header">FIM - Function Inhibition Manager v2.4.0</div>
+                    <div class="spec-item"><span class="spec-label">Module ID:</span> <span class="spec-value">0x38 (56)</span></div>
+                    <div class="spec-item"><span class="spec-label">Response Time:</span> <span class="spec-value">&lt;5ms</span></div>
+                    <div class="spec-item"><span class="spec-label">ASIL Level:</span> <span class="spec-value">ASIL-D</span></div>
+                    
+                    <div class="code-block">
+/* FIM Inhibition Configuration */
+typedef struct {
+  FiM_FunctionIdType FID;
+  Dem_EventIdType* EventIds;
+  uint8_t NumEvents;
+  FiM_InhibitionMaskType Mask;
+  boolean (*InhibitionFnc)(void);
+} FiM_ConfigType;
+
+/* Inhibition Mask Bits */
+#define FIM_LAST_FAILED    0x01
+#define FIM_NOT_TESTED     0x02
+#define FIM_TESTED         0x04
+#define FIM_CONFIRMED      0x08
+                    </div>
+
+                    <div class="spec-item"><span class="spec-label">Function IDs:</span></div>
+                    <div class="spec-item">• 0x001-0x0FF: Powertrain</div>
+                    <div class="spec-item">• 0x100-0x1FF: Chassis</div>
+                    <div class="spec-item">• 0x200-0x2FF: Body</div>
+                    <div class="spec-item">• 0x300-0x3FF: Safety</div>
+                </div>
+            </div>
+
+            <!-- Center Panel: Architecture Diagram -->
+            <div class="architecture-panel">
+                <svg width="100%" height="100%" viewBox="0 0 1000 700">
+                    <defs>
+                        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1a1f36" stroke-width="0.5"/>
+                        </pattern>
+                        
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                            <polygon points="0 0, 10 3, 0 6" fill="#00ff88" />
+                        </marker>
+
+                        <filter id="glow">
+                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+
+                    <rect width="1000" height="700" fill="url(#grid)"/>
+
+                    <!-- AUTOSAR BSW Layers -->
+                    <g id="bsw-layers">
+                        <!-- Application Layer -->
+                        <rect x="20" y="20" width="960" height="60" fill="none" stroke="#444" stroke-width="1" stroke-dasharray="5,5"/>
+                        <text x="30" y="40" fill="#666" font-size="10">APPLICATION LAYER (SWCs)</text>
+                        
+                        <!-- RTE -->
+                        <rect x="20" y="90" width="960" height="30" fill="#1a1f36" stroke="#666" stroke-width="1"/>
+                        <text x="500" y="108" text-anchor="middle" fill="#888" font-size="11">RTE (Runtime Environment)</text>
+                        
+                        <!-- Service Layer -->
+                        <rect x="20" y="130" width="960" height="350" fill="none" stroke="#00ff88" stroke-width="2"/>
+                        <text x="30" y="150" fill="#00ff88" font-size="10">SERVICE LAYER</text>
+                    </g>
+
+                    <!-- Monitor Functions -->
+                    <g id="monitors">
+                        <rect x="50" y="200" width="120" height="200" fill="#0a0e27" stroke="#666" stroke-width="1"/>
+                        <text x="110" y="220" text-anchor="middle" fill="#4db8ff" font-size="11" font-weight="bold">MONITORS</text>
+                        
+                        <rect x="60" y="230" width="100" height="25" fill="#1a1f36" stroke="#4db8ff" stroke-width="1"/>
+                        <text x="110" y="247" text-anchor="middle" fill="#4db8ff" font-size="9">Voltage Monitor</text>
+                        
+                        <rect x="60" y="260" width="100" height="25" fill="#1a1f36" stroke="#4db8ff" stroke-width="1"/>
+                        <text x="110" y="277" text-anchor="middle" fill="#4db8ff" font-size="9">Temp Monitor</text>
+                        
+                        <rect x="60" y="290" width="100" height="25" fill="#1a1f36" stroke="#4db8ff" stroke-width="1"/>
+                        <text x="110" y="307" text-anchor="middle" fill="#4db8ff" font-size="9">Ratio Monitor</text>
+                        
+                        <rect x="60" y="320" width="100" height="25" fill="#1a1f36" stroke="#4db8ff" stroke-width="1"/>
+                        <text x="110" y="337" text-anchor="middle" fill="#4db8ff" font-size="9">Timeout Monitor</text>
+                        
+                        <rect x="60" y="350" width="100" height="25" fill="#1a1f36" stroke="#4db8ff" stroke-width="1"/>
+                        <text x="110" y="367" text-anchor="middle" fill="#4db8ff" font-size="9">CRC Monitor</text>
+                    </g>
+
+                    <!-- DEM Module -->
+                    <g id="dem">
+                        <rect x="250" y="200" width="180" height="200" fill="#0f1419" stroke="#ff4444" stroke-width="2" filter="url(#glow)"/>
+                        <text x="340" y="220" text-anchor="middle" fill="#ff4444" font-size="14" font-weight="bold">DEM</text>
+                        
+                        <!-- Event Memory -->
+                        <rect x="260" y="230" width="160" height="40" fill="#1a0a0a" stroke="#ff4444" stroke-width="1"/>
+                        <text x="340" y="245" text-anchor="middle" fill="#ff8888" font-size="9">PRIMARY MEMORY</text>
+                        <text x="340" y="260" text-anchor="middle" fill="#ffaaaa" font-size="8">DTCs: P0101-P2999</text>
+                        
+                        <rect x="260" y="275" width="160" height="30" fill="#1a0a0a" stroke="#ff4444" stroke-width="1"/>
+                        <text x="340" y="290" text-anchor="middle" fill="#ff8888" font-size="9">MIRROR MEMORY</text>
+                        <text x="340" y="300" text-anchor="middle" fill="#ffaaaa" font-size="8">Safety Critical</text>
+                        
+                        <rect x="260" y="310" width="160" height="30" fill="#1a0a0a" stroke="#ff4444" stroke-width="1"/>
+                        <text x="340" y="325" text-anchor="middle" fill="#ff8888" font-size="9">FREEZE FRAME</text>
+                        <text x="340" y="335" text-anchor="middle" fill="#ffaaaa" font-size="8">Snapshot Data</text>
+                        
+                        <rect x="260" y="345" width="160" height="45" fill="#1a0a0a" stroke="#ff4444" stroke-width="1"/>
+                        <text x="340" y="360" text-anchor="middle" fill="#ff8888" font-size="9">DEBOUNCE</text>
+                        <text x="340" y="373" text-anchor="middle" fill="#ffaaaa" font-size="8">Counter: 0-127</text>
+                        <text x="340" y="385" text-anchor="middle" fill="#ffaaaa" font-size="8">Time: 0-65535ms</text>
+                    </g>
+
+                    <!-- DCM Module -->
+                    <g id="dcm">
+                        <rect x="500" y="160" width="180" height="150" fill="#0f1419" stroke="#4db8ff" stroke-width="2" filter="url(#glow)"/>
+                        <text x="590" y="180" text-anchor="middle" fill="#4db8ff" font-size="14" font-weight="bold">DCM</text>
+                        
+                        <!-- DSL -->
+                        <rect x="510" y="190" width="160" height="35" fill="#0a1419" stroke="#4db8ff" stroke-width="1"/>
+                        <text x="590" y="203" text-anchor="middle" fill="#4db8ff" font-size="9">DSL (Session Layer)</text>
+                        <text x="590" y="215" text-anchor="middle" fill="#88ccff" font-size="8">P2/P2* Timing</text>
+                        <text x="590" y="220" text-anchor="middle" fill="#88ccff" font-size="7">Sessions: Default|Extended|Programming</text>
+                        
+                        <!-- DSD -->
+                        <rect x="510" y="230" width="160" height="35" fill="#0a1419" stroke="#4db8ff" stroke-width="1"/>
+                        <text x="590" y="243" text-anchor="middle" fill="#4db8ff" font-size="9">DSD (Service Dispatcher)</text>
+                        <text x="590" y="255" text-anchor="middle" fill="#88ccff" font-size="8">Service Handler</text>
+                        <text x="590" y="260" text-anchor="middle" fill="#88ccff" font-size="7">Security Level: 0x01-0x7F</text>
+                        
+                        <!-- DSP -->
+                        <rect x="510" y="270" width="160" height="35" fill="#0a1419" stroke="#4db8ff" stroke-width="1"/>
+                        <text x="590" y="283" text-anchor="middle" fill="#4db8ff" font-size="9">DSP (Service Processing)</text>
+                        <text x="590" y="295" text-anchor="middle" fill="#88ccff" font-size="8">UDS Services</text>
+                        <text x="590" y="300" text-anchor="middle" fill="#88ccff" font-size="7">OBD Mode: $01-$0A</text>
+                    </g>
+
+                    <!-- FIM Module -->
+                    <g id="fim">
+                        <rect x="500" y="330" width="180" height="120" fill="#0f1419" stroke="#00ff88" stroke-width="2" filter="url(#glow)"/>
+                        <text x="590" y="350" text-anchor="middle" fill="#00ff88" font-size="14" font-weight="bold">FIM</text>
+                        
+                        <rect x="510" y="360" width="160" height="80" fill="#0a1a0a" stroke="#00ff88" stroke-width="1"/>
+                        <text x="590" y="375" text-anchor="middle" fill="#00ff88" font-size="9">INHIBITION MATRIX</text>
+                        
+                        <!-- Inhibition levels -->
+                        <text x="520" y="390" fill="#88ff88" font-size="8">FID_001: ──[P0101]──▶ LIMIT</text>
+                        <text x="520" y="402" fill="#88ff88" font-size="8">FID_002: ──[P0217]──▶ DISABLE</text>
+                        <text x="520" y="414" fill="#88ff88" font-size="8">FID_003: ──[P0300]──▶ LIMP</text>
+                        <text x="520" y="426" fill="#88ff88" font-size="8">FID_004: ──[P0500]──▶ WARNING</text>
+                        <text x="520" y="438" fill="#88ff88" font-size="8">FID_005: ──[P0700]──▶ SHUTDOWN</text>
+                    </g>
+
+                    <!-- Communication Interfaces -->
+                    <g id="interfaces">
+                        <rect x="750" y="200" width="150" height="200" fill="#0f1419" stroke="#ffa500" stroke-width="2"/>
+                        <text x="825" y="220" text-anchor="middle" fill="#ffa500" font-size="12" font-weight="bold">INTERFACES</text>
+                        
+                        <!-- CAN -->
+                        <rect x="760" y="230" width="130" height="40" fill="#1a1a0a" stroke="#ffa500" stroke-width="1"/>
+                        <text x="825" y="245" text-anchor="middle" fill="#ffa500" font-size="9">CAN Interface</text>
+                        <text x="825" y="257" text-anchor="middle" fill="#ffcc88" font-size="8">11/29-bit ID</text>
+                        <text x="825" y="265" text-anchor="middle" fill="#ffcc88" font-size="7">500kbps/1Mbps</text>
+                        
+                        <!-- DoIP -->
+                        <rect x="760" y="275" width="130" height="40" fill="#1a1a0a" stroke="#ffa500" stroke-width="1"/>
+                        <text x="825" y="290" text-anchor="middle" fill="#ffa500" font-size="9">DoIP</text>
+                        <text x="825" y="302" text-anchor="middle" fill="#ffcc88" font-size="8">Ethernet</text>
+                        <text x="825" y="310" text-anchor="middle" fill="#ffcc88" font-size="7">ISO 13400</text>
+                        
+                        <!-- OBD -->
+                        <rect x="760" y="320" width="130" height="40" fill="#1a1a0a" stroke="#ffa500" stroke-width="1"/>
+                        <text x="825" y="335" text-anchor="middle" fill="#ffa500" font-size="9">OBD-II</text>
+                        <text x="825" y="347" text-anchor="middle" fill="#ffcc88" font-size="8">J1979/ISO 15031</text>
+                        <text x="825" y="355" text-anchor="middle" fill="#ffcc88" font-size="7">Mode $01-$0A</text>
+                        
+                        <!-- XCP -->
+                        <rect x="760" y="365" width="130" height="30" fill="#1a1a0a" stroke="#ffa500" stroke-width="1"/>
+                        <text x="825" y="378" text-anchor="middle" fill="#ffa500" font-size="9">XCP</text>
+                        <text x="825" y="390" text-anchor="middle" fill="#ffcc88" font-size="8">Calibration</text>
+                    </g>
+
+                    <!-- Data Flow Arrows -->
+                    <g id="dataflow">
+                        <!-- Monitor to DEM -->
+                        <path d="M 170 290 L 250 290" stroke="#ff4444" stroke-width="2" marker-end="url(#arrow)" fill="none">
+                            <animate attributeName="stroke-dasharray" values="0,100;10,100" dur="1s" repeatCount="indefinite"/>
+                        </path>
+                        <text x="200" y="285" fill="#ff4444" font-size="8">Dem_SetEventStatus()</text>
+                        
+                        <!-- DEM to DCM -->
+                        <path d="M 430 250 L 500 220" stroke="#4db8ff" stroke-width="2" marker-end="url(#arrow)" fill="none">
+                            <animate attributeName="stroke-dasharray" values="0,100;10,100" dur="1s" begin="0.3s" repeatCount="indefinite"/>
+                        </path>
+                        <text x="450" y="230" fill="#4db8ff" font-size="8">Dem_GetDTCStatus()</text>
+                        
+                        <!-- DEM to FIM -->
+                        <path d="M 430 350 L 500 380" stroke="#00ff88" stroke-width="2" marker-end="url(#arrow)" fill="none">
+                            <animate attributeName="stroke-dasharray" values="0,100;10,100" dur="1s" begin="0.6s" repeatCount="indefinite"/>
+                        </path>
+                        <text x="450" y="370" fill="#00ff88" font-size="8">FiM_GetFunctionPermission()</text>
+                        
+                        <!-- DCM to Interface -->
+                        <path d="M 680 235 L 750 250" stroke="#ffa500" stroke-width="2" marker-end="url(#arrow)" fill="none">
+                            <animate attributeName="stroke-dasharray" values="0,100;10,100" dur="1s" begin="0.9s" repeatCount="indefinite"/>
+                        </path>
+                        <text x="700" y="230" fill="#ffa500" font-size="8">PduR_DcmTransmit()</text>
+                    </g>
+
+                    <!-- NvM Storage -->
+                    <g id="nvm">
+                        <rect x="250" y="420" width="180" height="50" fill="#1a0a1a" stroke="#888" stroke-width="1"/>
+                        <text x="340" y="440" text-anchor="middle" fill="#888" font-size="10">NvM (Non-Volatile Memory)</text>
+                        <text x="340" y="455" text-anchor="middle" fill="#aaa" font-size="8">EEPROM/DataFlash</text>
+                        <text x="340" y="465" text-anchor="middle" fill="#aaa" font-size="7">Block ID: 0x01-0xFF</text>
+                    </g>
+
+                    <!-- Status LEDs -->
+                    <g id="status">
+                        <circle cx="50" cy="50" r="5" fill="#00ff00" filter="url(#glow)">
+                            <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>
+                        </circle>
+                        <text x="65" y="54" fill="#00ff88" font-size="8">SYSTEM ACTIVE</text>
+                        
+                        <circle cx="200" cy="50" r="5" fill="#ff0000" filter="url(#glow)">
+                            <animate attributeName="opacity" values="1;0.3;1" dur="0.5s" repeatCount="indefinite"/>
+                        </circle>
+                        <text x="215" y="54" fill="#ff4444" font-size="8">DTC PRESENT</text>
+                        
+                        <circle cx="350" cy="50" r="5" fill="#4db8ff" filter="url(#glow)">
+                            <animate attributeName="opacity" values="1;0.3;1" dur="1s" repeatCount="indefinite"/>
+                        </circle>
+                        <text x="365" y="54" fill="#4db8ff" font-size="8">COMM ACTIVE</text>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- Right Panel: Protocol Details -->
+            <div class="protocol-panel">
+                <div class="protocol-box">
+                    <div class="protocol-title">CAN Frame Structure</div>
+                    <div class="code-block">
+/* ISO-TP Single Frame */
+0x7DF: 02 01 0C 00 00 00 00 00  // OBD Request
+0x7E8: 06 41 0C 1A F8 00 00 00  // ECM Response
+
+/* ISO-TP Multi Frame */
+0x7E0: 10 14 22 F1 90 F1 91 F1  // First Frame
+0x7E8: 30 00 14 00 00 00 00 00  // Flow Control
+0x7E0: 21 92 F1 93 F1 94 F1 95  // Consecutive Frame
+                    </div>
+                    
+                    <div class="protocol-detail"><span class="status-led led-comm"></span>CAN ID: 0x700-0x7FF (11-bit)</div>
+                    <div class="protocol-detail"><span class="status-led led-comm"></span>Extended: 0x18DA0000-0x18DAFFFF</div>
+                    <div class="protocol-detail">DLC: 8 bytes (CAN-FD: 64 bytes)</div>
+                </div>
+
+                <div class="protocol-box">
+                    <div class="protocol-title">DTC Status Byte (ISO 14229)</div>
+                    <table class="data-table">
+                        <tr><th>Bit</th><th>Name</th><th>Description</th></tr>
+                        <tr><td>0</td><td>TF</td><td>Test Failed</td></tr>
+                        <tr><td>1</td><td>TFTOC</td><td>Test Failed This Op Cycle</td></tr>
+                        <tr><td>2</td><td>PDTC</td><td>Pending DTC</td></tr>
+                        <tr><td>3</td><td>CDTC</td><td>Confirmed DTC</td></tr>
+                        <tr><td>4</td><td>TNCSLC</td><td>Test Not Completed Since Last Clear</td></tr>
+                        <tr><td>5</td><td>TFSLC</td><td>Test Failed Since Last Clear</td></tr>
+                        <tr><td>6</td><td>TNCTOC</td><td>Test Not Completed This Op Cycle</td></tr>
+                        <tr><td>7</td><td>WIR</td><td>Warning Indicator Requested</td></tr>
+                    </table>
+                </div>
+
+                <div class="protocol-box">
+                    <div class="protocol-title">UDS Service $19 SubFunctions</div>
+                    <div class="code-block">
+$19 $01: reportNumberOfDTCByStatusMask
+$19 $02: reportDTCByStatusMask  
+$19 $03: reportDTCSnapshotIdentification
+$19 $04: reportDTCSnapshotRecordByDTCNumber
+$19 $06: reportDTCExtDataRecordByDTCNumber
+$19 $0A: reportSupportedDTC
+                    </div>
+                    
+                    <div class="protocol-detail"><span class="status-led led-active"></span>Response Time: P2 = 50ms</div>
+                    <div class="protocol-detail"><span class="status-led led-active"></span>Enhanced: P2* = 5000ms</div>
+                </div>
+
+                <div class="protocol-box">
+                    <div class="protocol-title">FIM Permission States</div>
+                    <div class="code-block">
+typedef enum {
+  FIM_PERMISSION_GRANTED = 0x00,
+  FIM_PERMISSION_DENIED  = 0x01
+} FiM_PermissionType;
+
+/* Runtime Check */
+if (FiM_GetFunctionPermission(FID_TURBO, &Permission) == E_OK) {
+  if (Permission == FIM_PERMISSION_DENIED) {
+    /* Disable turbo operation */
+    Actuator_DisableTurbo();
+    /* Set limp mode */
+    PowerTrain_SetLimpMode(LEVEL_2);
+  }
+}
+                    </div>
+                </div>
+
+                <div class="protocol-box">
+                    <div class="protocol-title">Memory Allocation</div>
+                    <div class="memory-block">
+                        <div class="memory-address">0x0000-0x1FFF:</div>
+                        <div class="memory-content">DEM Primary Memory</div>
+                    </div>
+                    <div class="memory-block">
+                        <div class="memory-address">0x2000-0x27FF:</div>
+                        <div class="memory-content">DEM Mirror Memory</div>
+                    </div>
+                    <div class="memory-block">
+                        <div class="memory-address">0x2800-0x2FFF:</div>
+                        <div class="memory-content">Freeze Frame Buffer</div>
+                    </div>
+                    <div class="memory-block">
+                        <div class="memory-address">0x3000-0x33FF:</div>
+                        <div class="memory-content">DCM Buffer (4KB)</div>
+                    </div>
+                    <div class="memory-block">
+                        <div class="memory-address">0x3400-0x35FF:</div>
+                        <div class="memory-content">FIM Config Table</div>
+                    </div>
+                </div>
+
+                <div class="protocol-box">
+                    <div class="protocol-title">Real-Time Metrics</div>
+                    <div class="protocol-detail"><span class="status-led led-active"></span>DTC Count: <span class="highlight-red">17</span></div>
+                    <div class="protocol-detail"><span class="status-led led-active"></span>Pending: <span class="highlight-yellow">3</span></div>
+                    <div class="protocol-detail"><span class="status-led led-active"></span>Confirmed: <span class="highlight-red">14</span></div>
+                    <div class="protocol-detail"><span class="status-led led-comm"></span>DCM Sessions: <span class="highlight-blue">2</span></div>
+                    <div class="protocol-detail"><span class="status-led led-active"></span>FIM Inhibited: <span class="highlight-green">5</span></div>
+                    <div class="protocol-detail">CPU Load: <span class="highlight-yellow">47%</span></div>
+                    <div class="protocol-detail">Stack Usage: <span class="highlight-green">2.3KB/8KB</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
