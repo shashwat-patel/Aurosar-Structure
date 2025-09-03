@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automotive Diagnostic Systems Overview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .slide-container {
+            width: 100%;
+            max-width: 1600px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        .slide-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #2a5298;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #1e3c72;
+            font-weight: 400;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            color: #5a6c7d;
+        }
+
+        /* Main Layout Grid */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 40px;
+            margin-top: 30px;
+        }
+
+        /* Systems Section */
+        .systems-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .system-box {
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 5px solid;
+            background: #f8f9fa;
+            transition: transform 0.3s ease;
+        }
+
+        .system-box:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .dem-box { 
+            border-left-color: #e74c3c; 
+            background: linear-gradient(to right, rgba(231, 76, 60, 0.05), #f8f9fa);
+        }
+        .dcm-box { 
+            border-left-color: #3498db; 
+            background: linear-gradient(to right, rgba(52, 152, 219, 0.05), #f8f9fa);
+        }
+        .fim-box { 
+            border-left-color: #2ecc71; 
+            background: linear-gradient(to right, rgba(46, 204, 113, 0.05), #f8f9fa);
+        }
+
+        .system-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .system-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            margin-right: 15px;
+        }
+
+        .dem-icon { background: rgba(231, 76, 60, 0.15); color: #e74c3c; }
+        .dcm-icon { background: rgba(52, 152, 219, 0.15); color: #3498db; }
+        .fim-icon { background: rgba(46, 204, 113, 0.15); color: #2ecc71; }
+
+        .system-title {
+            flex: 1;
+        }
+
+        .system-title h3 {
+            font-size: 1.3em;
+            color: #2c3e50;
+            margin-bottom: 2px;
+        }
+
+        .system-title .full-name {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+
+        .system-description {
+            font-size: 0.95em;
+            color: #34495e;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+
+        .system-functions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .function-tag {
+            padding: 4px 10px;
+            background: white;
+            border-radius: 15px;
+            font-size: 0.85em;
+            color: #5a6c7d;
+            border: 1px solid #e0e0e0;
+        }
+
+        /* Flow Diagram Section */
+        .flow-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            height: 100%;
+        }
+
+        .flow-title {
+            font-size: 1.2em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        /* Example Box */
+        .example-box {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #ff9800;
+            margin-top: 20px;
+        }
+
+        .example-title {
+            font-size: 1.1em;
+            color: #e65100;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .example-flow {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .example-step {
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            font-size: 0.9em;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .step-header {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .dem-step { color: #e74c3c; }
+        .dcm-step { color: #3498db; }
+        .fim-step { color: #2ecc71; }
+
+        /* Bottom Summary */
+        .bottom-summary {
+            margin-top: 25px;
+            padding: 15px;
+            background: linear-gradient(135deg, #e3f2fd 0%, #e1f5fe 100%);
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #90caf9;
+        }
+
+        .summary-text {
+            font-size: 1.05em;
+            color: #1565c0;
+            font-weight: 500;
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .example-flow {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .slide-container {
+                box-shadow: none;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        <div class="slide-header">
+            <h1>Automotive Diagnostic Systems: DEM, DCM, and FIM</h1>
+            <p class="subtitle">Three Critical Systems That Monitor, Communicate, and Protect Modern Vehicles</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Left Side: Three Systems -->
+            <div class="systems-section">
+                <div class="system-box dem-box">
+                    <div class="system-header">
+                        <div class="system-icon dem-icon">📊</div>
+                        <div class="system-title">
+                            <h3>DEM</h3>
+                            <div class="full-name">Diagnostic Event Manager</div>
+                        </div>
+                    </div>
+                    <div class="system-description">
+                        <strong>The Memory System:</strong> Records and stores all vehicle faults and diagnostic trouble codes (DTCs). Like a black box, it captures what went wrong, when it happened, and the conditions at that moment.
+                    </div>
+                    <div class="system-functions">
+                        <span class="function-tag">Stores fault codes</span>
+                        <span class="function-tag">Records freeze frame</span>
+                        <span class="function-tag">Validates errors</span>
+                        <span class="function-tag">Tracks occurrences</span>
+                    </div>
+                </div>
+
+                <div class="system-box dcm-box">
+                    <div class="system-header">
+                        <div class="system-icon dcm-icon">🔌</div>
+                        <div class="system-title">
+                            <h3>DCM</h3>
+                            <div class="full-name">Diagnostic Communication Manager</div>
+                        </div>
+                    </div>
+                    <div class="system-description">
+                        <strong>The Translator:</strong> Manages communication between the vehicle's internal systems and external diagnostic tools. Converts vehicle data into standard formats that service tools can understand.
+                    </div>
+                    <div class="system-functions">
+                        <span class="function-tag">OBD-II interface</span>
+                        <span class="function-tag">Read/clear codes</span>
+                        <span class="function-tag">Live data stream</span>
+                        <span class="function-tag">Service tool gateway</span>
+                    </div>
+                </div>
+
+                <div class="system-box fim-box">
+                    <div class="system-header">
+                        <div class="system-icon fim-icon">🛡️</div>
+                        <div class="system-title">
+                            <h3>FIM</h3>
+                            <div class="full-name">Function Inhibition Manager</div>
+                        </div>
+                    </div>
+                    <div class="system-description">
+                        <strong>The Protector:</strong> Monitors faults and strategically disables or limits vehicle functions to prevent damage. Enables "limp mode" to get drivers safely to service while protecting the engine.
+                    </div>
+                    <div class="system-functions">
+                        <span class="function-tag">Limits power</span>
+                        <span class="function-tag">Protects engine</span>
+                        <span class="function-tag">Enables limp mode</span>
+                        <span class="function-tag">Safety priority</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Flow Diagram -->
+            <div class="flow-section">
+                <div class="flow-title">How They Work Together</div>
+                
+                <svg width="100%" height="280" viewBox="0 0 500 280">
+                    <!-- Background zones -->
+                    <rect x="10" y="10" width="480" height="260" fill="#f0f4f8" rx="10" opacity="0.5"/>
+                    
+                    <!-- Sensor Input -->
+                    <rect x="30" y="40" width="100" height="50" fill="#fff" stroke="#95a5a6" stroke-width="2" rx="8"/>
+                    <text x="80" y="70" text-anchor="middle" font-size="13" font-weight="600" fill="#2c3e50">Sensors Detect</text>
+                    <text x="80" y="85" text-anchor="middle" font-size="11" fill="#7f8c8d">Problem</text>
+                    
+                    <!-- DEM -->
+                    <rect x="180" y="40" width="100" height="50" fill="#ffebee" stroke="#e74c3c" stroke-width="3" rx="8"/>
+                    <text x="230" y="60" text-anchor="middle" font-size="14" font-weight="bold" fill="#e74c3c">DEM</text>
+                    <text x="230" y="78" text-anchor="middle" font-size="10" fill="#c0392b">Stores Code</text>
+                    
+                    <!-- FIM -->
+                    <rect x="330" y="40" width="100" height="50" fill="#e8f8f5" stroke="#2ecc71" stroke-width="3" rx="8"/>
+                    <text x="380" y="60" text-anchor="middle" font-size="14" font-weight="bold" fill="#2ecc71">FIM</text>
+                    <text x="380" y="78" text-anchor="middle" font-size="10" fill="#27ae60">Limits Function</text>
+                    
+                    <!-- DCM -->
+                    <rect x="180" y="130" width="100" height="50" fill="#e3f2fd" stroke="#3498db" stroke-width="3" rx="8"/>
+                    <text x="230" y="150" text-anchor="middle" font-size="14" font-weight="bold" fill="#3498db">DCM</text>
+                    <text x="230" y="168" text-anchor="middle" font-size="10" fill="#2980b9">Communicates</text>
+                    
+                    <!-- Service Tool -->
+                    <rect x="330" y="130" width="100" height="50" fill="#fff" stroke="#95a5a6" stroke-width="2" rx="8"/>
+                    <text x="380" y="150" text-anchor="middle" font-size="13" font-weight="600" fill="#2c3e50">Service Tool</text>
+                    <text x="380" y="168" text-anchor="middle" font-size="11" fill="#7f8c8d">Reads Data</text>
+                    
+                    <!-- Check Engine Light -->
+                    <circle cx="80" cy="155" r="25" fill="#ff9800" opacity="0.8"/>
+                    <text x="80" y="160" text-anchor="middle" font-size="20">⚠️</text>
+                    <text x="80" y="195" text-anchor="middle" font-size="10" fill="#e65100">Check Engine</text>
+                    
+                    <!-- Arrows -->
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                            <polygon points="0 0, 10 3, 0 6" fill="#5a6c7d" />
+                        </marker>
+                    </defs>
+                    
+                    <!-- Flow arrows -->
+                    <line x1="130" y1="65" x2="180" y2="65" stroke="#5a6c7d" stroke-width="2" marker-end="url(#arrowhead)"/>
+                    <line x1="280" y1="65" x2="330" y2="65" stroke="#5a6c7d" stroke-width="2" marker-end="url(#arrowhead)"/>
+                    <line x1="230" y1="90" x2="230" y2="130" stroke="#5a6c7d" stroke-width="2" marker-end="url(#arrowhead)"/>
+                    <line x1="280" y1="155" x2="330" y2="155" stroke="#5a6c7d" stroke-width="2" marker-end="url(#arrowhead)"/>
+                    <line x1="180" y1="80" x2="105" y2="130" stroke="#ff9800" stroke-width="2" marker-end="url(#arrowhead)" stroke-dasharray="5,5"/>
+                    
+                    <!-- Labels on arrows -->
+                    <text x="155" y="60" font-size="9" fill="#7f8c8d">Fault</text>
+                    <text x="305" y="60" font-size="9" fill="#7f8c8d">Monitor</text>
+                    <text x="240" y="110" font-size="9" fill="#7f8c8d">Report</text>
+                    <text x="305" y="150" font-size="9" fill="#7f8c8d">Diagnose</text>
+                </svg>
+
+                <div class="example-box">
+                    <div class="example-title">💡 Real Example: Engine Overheating</div>
+                    <div class="example-flow">
+                        <div class="example-step">
+                            <div class="step-header dem-step">1. DEM Records</div>
+                            <div>• Stores code P0217<br>• Captures temp: 260°F<br>• Time: 2:30 PM</div>
+                        </div>
+                        <div class="example-step">
+                            <div class="step-header fim-step">2. FIM Protects</div>
+                            <div>• Reduces power 50%<br>• Limits speed 45mph<br>• Increases cooling</div>
+                        </div>
+                        <div class="example-step">
+                            <div class="step-header dcm-step">3. DCM Reports</div>
+                            <div>• Sends P0217 to tool<br>• Shows live data<br>• Enables repair</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-summary">
+            <div class="summary-text">
+                💡 <strong>Key Insight:</strong> DEM stores what went wrong, FIM protects the vehicle from damage, and DCM communicates with service tools - 
+                working together to ensure vehicle safety, reliability, and efficient maintenance.
+            </div>
+        </div>
+    </div>
+</body>
+</html>
