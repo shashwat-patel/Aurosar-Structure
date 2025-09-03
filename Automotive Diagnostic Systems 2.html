@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automotive Diagnostic Systems - Visual Overview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .presentation-container {
+            width: 100%;
+            max-width: 1900px;
+            height: 96vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            padding: 20px;
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            font-weight: 300;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 2.5fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            overflow: hidden;
+        }
+
+        /* Left Panel - Definitions */
+        .definitions-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .definition-card {
+            flex: 1;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .def-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid;
+        }
+
+        .dem-card .def-header { border-bottom-color: #e74c3c; }
+        .dcm-card .def-header { border-bottom-color: #3498db; }
+        .fim-card .def-header { border-bottom-color: #27ae60; }
+
+        .def-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            margin-right: 15px;
+        }
+
+        .dem-icon { background: rgba(231, 76, 60, 0.1); color: #e74c3c; }
+        .dcm-icon { background: rgba(52, 152, 219, 0.1); color: #3498db; }
+        .fim-icon { background: rgba(39, 174, 96, 0.1); color: #27ae60; }
+
+        .def-title h3 {
+            font-size: 1.5em;
+            margin-bottom: 3px;
+        }
+
+        .def-title p {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+
+        .def-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .def-text {
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .def-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .feature-tag {
+            padding: 5px 12px;
+            background: linear-gradient(135deg, #f5f6fa 0%, #dfe6e9 100%);
+            border-radius: 20px;
+            font-size: 0.85em;
+            color: #2c3e50;
+            border: 1px solid #b2bec3;
+        }
+
+        /* Center Panel - Main Visualization */
+        .visualization-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .viz-title {
+            font-size: 1.4em;
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        /* Right Panel - Process Flow */
+        .process-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .process-card {
+            flex: 1;
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .process-title {
+            font-size: 1.1em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        /* Animation classes */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+
+        @keyframes flow {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -40; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .blink {
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        .rotate {
+            animation: rotate 3s linear infinite;
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
+            }
+            
+            .definitions-panel {
+                flex-direction: row;
+            }
+            
+            .process-panel {
+                flex-direction: row;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <div class="header">
+            <h1>Automotive Diagnostic Systems Architecture</h1>
+            <p>DEM • DCM • FIM - Integrated Vehicle Health Management</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Left Panel: System Definitions -->
+            <div class="definitions-panel">
+                <div class="definition-card dem-card">
+                    <div class="def-header">
+                        <div class="def-icon dem-icon">💾</div>
+                        <div class="def-title">
+                            <h3 style="color: #e74c3c;">DEM</h3>
+                            <p>Diagnostic Event Manager</p>
+                        </div>
+                    </div>
+                    <div class="def-content">
+                        <div class="def-text">
+                            <strong>Central diagnostic memory system</strong> that monitors, validates, and stores all vehicle fault events. Acts as the diagnostic historian, maintaining comprehensive records of all system anomalies.
+                        </div>
+                        <div class="def-features">
+                            <span class="feature-tag">Fault Recording</span>
+                            <span class="feature-tag">Event Validation</span>
+                            <span class="feature-tag">Data Storage</span>
+                            <span class="feature-tag">Status Tracking</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="definition-card dcm-card">
+                    <div class="def-header">
+                        <div class="def-icon dcm-icon">📡</div>
+                        <div class="def-title">
+                            <h3 style="color: #3498db;">DCM</h3>
+                            <p>Diagnostic Communication Manager</p>
+                        </div>
+                    </div>
+                    <div class="def-content">
+                        <div class="def-text">
+                            <strong>Communication gateway</strong> that manages all diagnostic data exchange between vehicle systems and external diagnostic tools. Translates internal data to standard protocols.
+                        </div>
+                        <div class="def-features">
+                            <span class="feature-tag">Protocol Handler</span>
+                            <span class="feature-tag">Service Router</span>
+                            <span class="feature-tag">Data Translator</span>
+                            <span class="feature-tag">Security Gate</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="definition-card fim-card">
+                    <div class="def-header">
+                        <div class="def-icon fim-icon">🛡️</div>
+                        <div class="def-title">
+                            <h3 style="color: #27ae60;">FIM</h3>
+                            <p>Function Inhibition Manager</p>
+                        </div>
+                    </div>
+                    <div class="def-content">
+                        <div class="def-text">
+                            <strong>Safety protection system</strong> that monitors fault conditions and strategically limits or disables vehicle functions to prevent damage and ensure occupant safety.
+                        </div>
+                        <div class="def-features">
+                            <span class="feature-tag">Risk Assessment</span>
+                            <span class="feature-tag">Function Control</span>
+                            <span class="feature-tag">Safety Priority</span>
+                            <span class="feature-tag">Limp Mode</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Panel: Main System Visualization -->
+            <div class="visualization-panel">
+                <div class="viz-title">Integrated Diagnostic System Architecture</div>
+                
+                <svg width="100%" height="100%" viewBox="0 0 900 650" style="flex: 1;">
+                    <defs>
+                        <!-- Gradients -->
+                        <linearGradient id="demGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#e74c3c;stop-opacity:0.8" />
+                            <stop offset="100%" style="stop-color:#c0392b;stop-opacity:0.8" />
+                        </linearGradient>
+                        
+                        <linearGradient id="dcmGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#3498db;stop-opacity:0.8" />
+                            <stop offset="100%" style="stop-color:#2980b9;stop-opacity:0.8" />
+                        </linearGradient>
+                        
+                        <linearGradient id="fimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#27ae60;stop-opacity:0.8" />
+                            <stop offset="100%" style="stop-color:#229954;stop-opacity:0.8" />
+                        </linearGradient>
+
+                        <!-- Arrow markers -->
+                        <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                            <polygon points="0 0, 10 3, 0 6" fill="#e74c3c" />
+                        </marker>
+                        
+                        <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                            <polygon points="0 0, 10 3, 0 6" fill="#3498db" />
+                        </marker>
+                        
+                        <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                            <polygon points="0 0, 10 3, 0 6" fill="#27ae60" />
+                        </marker>
+
+                        <!-- Glow filter -->
+                        <filter id="glow">
+                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+
+                        <!-- Pattern for grid -->
+                        <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                            <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#e0e0e0" stroke-width="0.5"/>
+                        </pattern>
+                    </defs>
+
+                    <!-- Background grid -->
+                    <rect width="900" height="650" fill="url(#grid)" opacity="0.3"/>
+
+                    <!-- Vehicle Systems Input -->
+                    <g id="vehicle-systems">
+                        <text x="90" y="30" font-size="14" font-weight="600" fill="#34495e">Vehicle Systems</text>
+                        
+                        <!-- Engine ECU -->
+                        <rect x="30" y="50" width="120" height="60" fill="#ecf0f1" stroke="#34495e" stroke-width="2" rx="10"/>
+                        <image x="45" y="60" width="30" height="30" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzM0NDk1ZSIgZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4eiIvPjwvc3ZnPg=="/>
+                        <text x="90" y="85" text-anchor="middle" font-size="12" fill="#2c3e50">Engine ECU</text>
+                        
+                        <!-- Transmission ECU -->
+                        <rect x="30" y="130" width="120" height="60" fill="#ecf0f1" stroke="#34495e" stroke-width="2" rx="10"/>
+                        <text x="90" y="165" text-anchor="middle" font-size="12" fill="#2c3e50">Trans ECU</text>
+                        
+                        <!-- ABS ECU -->
+                        <rect x="30" y="210" width="120" height="60" fill="#ecf0f1" stroke="#34495e" stroke-width="2" rx="10"/>
+                        <text x="90" y="245" text-anchor="middle" font-size="12" fill="#2c3e50">ABS ECU</text>
+                        
+                        <!-- Body ECU -->
+                        <rect x="30" y="290" width="120" height="60" fill="#ecf0f1" stroke="#34495e" stroke-width="2" rx="10"/>
+                        <text x="90" y="325" text-anchor="middle" font-size="12" fill="#2c3e50">Body ECU</text>
+                        
+                        <!-- Sensors -->
+                        <g id="sensors">
+                            <circle cx="50" cy="400" r="20" fill="#f39c12" opacity="0.8"/>
+                            <text x="50" y="405" text-anchor="middle" font-size="10" fill="white">O2</text>
+                            
+                            <circle cx="90" cy="400" r="20" fill="#e67e22" opacity="0.8"/>
+                            <text x="90" y="405" text-anchor="middle" font-size="10" fill="white">MAF</text>
+                            
+                            <circle cx="130" cy="400" r="20" fill="#d35400" opacity="0.8"/>
+                            <text x="130" y="405" text-anchor="middle" font-size="10" fill="white">CKP</text>
+                        </g>
+                        <text x="90" y="440" text-anchor="middle" font-size="11" fill="#7f8c8d">Sensor Inputs</text>
+                    </g>
+
+                    <!-- CAN Bus -->
+                    <g id="can-bus">
+                        <line x1="180" y1="50" x2="180" y2="450" stroke="#34495e" stroke-width="8" stroke-linecap="round"/>
+                        <text x="190" y="250" font-size="12" fill="#2c3e50" transform="rotate(90 190 250)">CAN BUS (500kbps)</text>
+                        
+                        <!-- Connection lines -->
+                        <line x1="150" y1="80" x2="180" y2="80" stroke="#34495e" stroke-width="3"/>
+                        <line x1="150" y1="160" x2="180" y2="160" stroke="#34495e" stroke-width="3"/>
+                        <line x1="150" y1="240" x2="180" y2="240" stroke="#34495e" stroke-width="3"/>
+                        <line x1="150" y1="320" x2="180" y2="320" stroke="#34495e" stroke-width="3"/>
+                    </g>
+
+                    <!-- DEM Module Visualization -->
+                    <g id="dem-module">
+                        <rect x="250" y="150" width="200" height="250" fill="url(#demGrad)" stroke="#c0392b" stroke-width="3" rx="15" filter="url(#glow)"/>
+                        <text x="350" y="180" text-anchor="middle" font-size="24" font-weight="bold" fill="white">DEM</text>
+                        
+                        <!-- Memory visualization -->
+                        <g id="memory-blocks">
+                            <rect x="270" y="200" width="160" height="30" fill="white" opacity="0.9" rx="5"/>
+                            <text x="350" y="220" text-anchor="middle" font-size="11" fill="#c0392b">Primary Memory</text>
+                            
+                            <rect x="270" y="240" width="160" height="30" fill="white" opacity="0.8" rx="5"/>
+                            <text x="350" y="260" text-anchor="middle" font-size="11" fill="#c0392b">Mirror Memory</text>
+                            
+                            <rect x="270" y="280" width="160" height="30" fill="white" opacity="0.7" rx="5"/>
+                            <text x="350" y="300" text-anchor="middle" font-size="11" fill="#c0392b">Freeze Frame Data</text>
+                        </g>
+                        
+                        <!-- DTC Status visualization -->
+                        <g id="dtc-status">
+                            <rect x="270" y="320" width="160" height="60" fill="#2c3e50" opacity="0.3" rx="5"/>
+                            <text x="350" y="340" text-anchor="middle" font-size="10" fill="white">Active DTCs</text>
+                            <g id="dtc-codes">
+                                <text x="290" y="360" font-size="9" fill="#ffeb3b">P0301</text>
+                                <text x="330" y="360" font-size="9" fill="#ff9800">P0171</text>
+                                <text x="370" y="360" font-size="9" fill="#f44336">P0217</text>
+                                <text x="410" y="360" font-size="9" fill="#ffeb3b">P0420</text>
+                            </g>
+                        </g>
+                    </g>
+
+                    <!-- DCM Module Visualization -->
+                    <g id="dcm-module">
+                        <rect x="520" y="50" width="200" height="180" fill="url(#dcmGrad)" stroke="#2980b9" stroke-width="3" rx="15" filter="url(#glow)"/>
+                        <text x="620" y="80" text-anchor="middle" font-size="24" font-weight="bold" fill="white">DCM</text>
+                        
+                        <!-- Protocol Stack -->
+                        <g id="protocol-stack">
+                            <rect x="540" y="100" width="160" height="25" fill="white" opacity="0.9" rx="5"/>
+                            <text x="620" y="117" text-anchor="middle" font-size="10" fill="#2980b9">Session Layer</text>
+                            
+                            <rect x="540" y="130" width="160" height="25" fill="white" opacity="0.8" rx="5"/>
+                            <text x="620" y="147" text-anchor="middle" font-size="10" fill="#2980b9">Service Dispatcher</text>
+                            
+                            <rect x="540" y="160" width="160" height="25" fill="white" opacity="0.7" rx="5"/>
+                            <text x="620" y="177" text-anchor="middle" font-size="10" fill="#2980b9">Service Processor</text>
+                            
+                            <rect x="540" y="190" width="160" height="25" fill="white" opacity="0.6" rx="5"/>
+                            <text x="620" y="207" text-anchor="middle" font-size="10" fill="#2980b9">Transport Protocol</text>
+                        </g>
+                    </g>
+
+                    <!-- FIM Module Visualization -->
+                    <g id="fim-module">
+                        <rect x="520" y="270" width="200" height="180" fill="url(#fimGrad)" stroke="#229954" stroke-width="3" rx="15" filter="url(#glow)"/>
+                        <text x="620" y="300" text-anchor="middle" font-size="24" font-weight="bold" fill="white">FIM</text>
+                        
+                        <!-- Function States -->
+                        <g id="function-states">
+                            <circle cx="570" cy="330" r="25" fill="white" opacity="0.9"/>
+                            <text x="570" y="335" text-anchor="middle" font-size="10" fill="#27ae60">Normal</text>
+                            
+                            <circle cx="620" cy="330" r="25" fill="white" opacity="0.7"/>
+                            <text x="620" y="335" text-anchor="middle" font-size="10" fill="#f39c12">Limited</text>
+                            
+                            <circle cx="670" cy="330" r="25" fill="white" opacity="0.5"/>
+                            <text x="670" y="335" text-anchor="middle" font-size="10" fill="#e74c3c">Disabled</text>
+                        </g>
+                        
+                        <!-- Protection Levels -->
+                        <g id="protection-levels">
+                            <rect x="540" y="370" width="160" height="60" fill="#2c3e50" opacity="0.3" rx="5"/>
+                            <text x="620" y="390" text-anchor="middle" font-size="10" fill="white">Active Protections</text>
+                            <text x="570" y="410" font-size="9" fill="#ffeb3b">↓ Power</text>
+                            <text x="620" y="410" font-size="9" fill="#ff9800">↓ Speed</text>
+                            <text x="670" y="410" font-size="9" fill="#f44336">Limp Mode</text>
+                        </g>
+                    </g>
+
+                    <!-- External Interfaces -->
+                    <g id="external-interfaces">
+                        <text x="810" y="30" font-size="14" font-weight="600" fill="#34495e" text-anchor="middle">External Access</text>
+                        
+                        <!-- OBD Port -->
+                        <rect x="750" y="50" width="120" height="80" fill="#ecf0f1" stroke="#7f8c8d" stroke-width="2" rx="10"/>
+                        <circle cx="780" cy="90" r="8" fill="#34495e"/>
+                        <circle cx="810" cy="90" r="8" fill="#34495e"/>
+                        <circle cx="840" cy="90" r="8" fill="#34495e"/>
+                        <circle cx="795" cy="110" r="8" fill="#34495e"/>
+                        <circle cx="825" cy="110" r="8" fill="#34495e"/>
+                        <text x="810" y="70" text-anchor="middle" font-size="12" fill="#2c3e50">OBD-II Port</text>
+                        
+                        <!-- Scan Tool -->
+                        <rect x="750" y="150" width="120" height="80" fill="#34495e" stroke="#2c3e50" stroke-width="2" rx="10"/>
+                        <rect x="765" y="165" width="90" height="50" fill="#3498db" rx="5"/>
+                        <text x="810" y="195" text-anchor="middle" font-size="11" fill="white">Scan Tool</text>
+                        
+                        <!-- Warning Light -->
+                        <g id="warning-light">
+                            <circle cx="810" cy="300" r="35" fill="#f39c12" class="blink"/>
+                            <text x="810" y="310" text-anchor="middle" font-size="30">⚠️</text>
+                            <text x="810" y="350" text-anchor="middle" font-size="11" fill="#34495e">Check Engine</text>
+                        </g>
+                        
+                        <!-- Remote Diagnostics -->
+                        <rect x="750" y="380" width="120" height="60" fill="#9b59b6" stroke="#8e44ad" stroke-width="2" rx="10" opacity="0.8"/>
+                        <text x="810" y="405" text-anchor="middle" font-size="11" fill="white">Remote</text>
+                        <text x="810" y="420" text-anchor="middle" font-size="11" fill="white">Diagnostics</text>
+                    </g>
+
+                    <!-- Data Flow Animations -->
+                    <g id="data-flows">
+                        <!-- Sensor to DEM -->
+                        <path d="M 180 250 L 250 275" stroke="#e74c3c" stroke-width="3" fill="none" stroke-dasharray="10,5" marker-end="url(#arrowRed)">
+                            <animate attributeName="stroke-dashoffset" values="0;-15" dur="1.5s" repeatCount="indefinite"/>
+                        </path>
+                        <text x="210" y="260" font-size="10" fill="#e74c3c">Fault Events</text>
+                        
+                        <!-- DEM to DCM -->
+                        <path d="M 450 200 L 520 140" stroke="#3498db" stroke-width="3" fill="none" stroke-dasharray="10,5" marker-end="url(#arrowBlue)">
+                            <animate attributeName="stroke-dashoffset" values="0;-15" dur="1.5s" begin="0.5s" repeatCount="indefinite"/>
+                        </path>
+                        <text x="480" y="165" font-size="10" fill="#3498db">DTC Data</text>
+                        
+                        <!-- DEM to FIM -->
+                        <path d="M 450 350 L 520 360" stroke="#27ae60" stroke-width="3" fill="none" stroke-dasharray="10,5" marker-end="url(#arrowGreen)">
+                            <animate attributeName="stroke-dashoffset" values="0;-15" dur="1.5s" begin="1s" repeatCount="indefinite"/>
+                        </path>
+                        <text x="480" y="380" font-size="10" fill="#27ae60">Fault Status</text>
+                        
+                        <!-- DCM to OBD -->
+                        <path d="M 720 140 L 750 90" stroke="#3498db" stroke-width="3" fill="none" marker-end="url(#arrowBlue)"/>
+                        
+                        <!-- DCM to Scan Tool -->
+                        <path d="M 720 180 L 750 190" stroke="#3498db" stroke-width="3" fill="none" marker-end="url(#arrowBlue)"/>
+                        
+                        <!-- FIM to Warning -->
+                        <path d="M 720 350 L 775 300" stroke="#f39c12" stroke-width="3" fill="none"/>
+                    </g>
+
+                    <!-- Real-time Status Indicators -->
+                    <g id="status-indicators">
+                        <circle cx="350" cy="130" r="8" fill="#4caf50" filter="url(#glow)">
+                            <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>
+                        </circle>
+                        <text x="365" y="135" font-size="9" fill="#4caf50">Active</text>
+                        
+                        <circle cx="620" cy="30" r="8" fill="#2196f3" filter="url(#glow)">
+                            <animate attributeName="opacity" values="1;0.3;1" dur="1s" repeatCount="indefinite"/>
+                        </circle>
+                        <text x="635" y="35" font-size="9" fill="#2196f3">Communicating</text>
+                        
+                        <circle cx="620" cy="250" r="8" fill="#ff9800" filter="url(#glow)">
+                            <animate attributeName="opacity" values="1;0.3;1" dur="0.5s" repeatCount="indefinite"/>
+                        </circle>
+                        <text x="635" y="255" font-size="9" fill="#ff9800">Protection Active</text>
+                    </g>
+
+                    <!-- System Integration Lines -->
+                    <g id="integration" opacity="0.3">
+                        <line x1="350" y1="400" x2="620" y2="450" stroke="#95a5a6" stroke-width="1" stroke-dasharray="5,5"/>
+                        <line x1="450" y1="275" x2="520" y2="275" stroke="#95a5a6" stroke-width="1" stroke-dasharray="5,5"/>
+                    </g>
+                </svg>
+
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #e74c3c;"></div>
+                        <span>DEM - Fault Storage & Management</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #3498db;"></div>
+                        <span>DCM - External Communication</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #27ae60;"></div>
+                        <span>FIM - Safety Protection</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Process Flow -->
+            <div class="process-panel">
+                <div class="process-card">
+                    <div class="process-title">🔴 Fault Detection Flow</div>
+                    <svg viewBox="0 0 200 150">
+                        <!-- Step 1: Detection -->
+                        <circle cx="40" cy="30" r="20" fill="#ffebee" stroke="#e74c3c" stroke-width="2"/>
+                        <text x="40" y="35" text-anchor="middle" font-size="10" fill="#e74c3c">Detect</text>
+                        
+                        <!-- Step 2: Validate -->
+                        <circle cx="100" cy="30" r="20" fill="#ffcdd2" stroke="#e74c3c" stroke-width="2"/>
+                        <text x="100" y="35" text-anchor="middle" font-size="10" fill="#e74c3c">Validate</text>
+                        
+                        <!-- Step 3: Store -->
+                        <circle cx="160" cy="30" r="20" fill="#ef5350" stroke="#c62828" stroke-width="2"/>
+                        <text x="160" y="35" text-anchor="middle" font-size="10" fill="white">Store</text>
+                        
+                        <!-- Arrows -->
+                        <line x1="60" y1="30" x2="80" y2="30" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRed)"/>
+                        <line x1="120" y1="30" x2="140" y2="30" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRed)"/>
+                        
+                        <!-- Details -->
+                        <text x="100" y="70" text-anchor="middle" font-size="11" font-weight="600" fill="#2c3e50">DEM Process</text>
+                        <text x="40" y="90" font-size="9" fill="#7f8c8d">• Sensor anomaly</text>
+                        <text x="40" y="105" font-size="9" fill="#7f8c8d">• Debounce check</text>
+                        <text x="40" y="120" font-size="9" fill="#7f8c8d">• Create DTC</text>
+                        <text x="40" y="135" font-size="9" fill="#7f8c8d">• Save snapshot</text>
+                    </svg>
+                </div>
+
+                <div class="process-card">
+                    <div class="process-title">🔵 Communication Protocol</div>
+                    <svg viewBox="0 0 200 150">
+                        <!-- Request -->
+                        <rect x="20" y="20" width="60" height="30" fill="#e3f2fd" stroke="#3498db" stroke-width="2" rx="5"/>
+                        <text x="50" y="40" text-anchor="middle" font-size="9" fill="#3498db">Request</text>
+                        
+                        <!-- DCM Processing -->
+                        <rect x="70" y="60" width="60" height="40" fill="#2196f3" stroke="#1976d2" stroke-width="2" rx="5"/>
+                        <text x="100" y="80" text-anchor="middle" font-size="10" fill="white">DCM</text>
+                        <text x="100" y="93" text-anchor="middle" font-size="8" fill="white">Process</text>
+                        
+                        <!-- Response -->
+                        <rect x="120" y="20" width="60" height="30" fill="#e3f2fd" stroke="#3498db" stroke-width="2" rx="5"/>
+                        <text x="150" y="40" text-anchor="middle" font-size="9" fill="#3498db">Response</text>
+                        
+                        <!-- Flow arrows -->
+                        <path d="M 50 50 L 85 60" stroke="#3498db" stroke-width="2" marker-end="url(#arrowBlue)"/>
+                        <path d="M 115 60 L 150 50" stroke="#3498db" stroke-width="2" marker-end="url(#arrowBlue)"/>
+                        
+                        <!-- Protocol info -->
+                        <text x="100" y="120" text-anchor="middle" font-size="9" fill="#7f8c8d">UDS / OBD-II Protocol</text>
+                        <text x="100" y="135" text-anchor="middle" font-size="9" fill="#7f8c8d">50ms Response Time</text>
+                    </svg>
+                </div>
+
+                <div class="process-card">
+                    <div class="process-title">🟢 Protection Activation</div>
+                    <svg viewBox="0 0 200 150">
+                        <!-- Risk Levels -->
+                        <rect x="30" y="20" width="140" height="80" fill="#e8f5e9" stroke="#27ae60" stroke-width="2" rx="10"/>
+                        
+                        <!-- Level 1 -->
+                        <rect x="40" y="30" width="120" height="20" fill="#81c784" rx="5"/>
+                        <text x="100" y="44" text-anchor="middle" font-size="10" fill="white">Level 1: Warning Only</text>
+                        
+                        <!-- Level 2 -->
+                        <rect x="40" y="55" width="120" height="20" fill="#66bb6a" rx="5"/>
+                        <text x="100" y="69" text-anchor="middle" font-size="10" fill="white">Level 2: Power Limit</text>
+                        
+                        <!-- Level 3 -->
+                        <rect x="40" y="80" width="120" height="20" fill="#4caf50" rx="5"/>
+                        <text x="100" y="94" text-anchor="middle" font-size="10" fill="white">Level 3: Limp Mode</text>
+                        
+                        <text x="100" y="120" text-anchor="middle" font-size="11" font-weight="600" fill="#2c3e50">FIM Response</text>
+                        <text x="100" y="135" text-anchor="middle" font-size="9" fill="#7f8c8d">Based on Fault Severity</text>
+                    </svg>
+                </div>
+
+                <div class="process-card">
+                    <div class="process-title">⏱️ System Timeline</div>
+                    <svg viewBox="0 0 200 150">
+                        <line x1="30" y1="75" x2="170" y2="75" stroke="#34495e" stroke-width="2"/>
+                        
+                        <!-- Time points -->
+                        <circle cx="50" cy="75" r="8" fill="#e74c3c"/>
+                        <text x="50" y="60" text-anchor="middle" font-size="9" fill="#e74c3c">0ms</text>
+                        <text x="50" y="95" text-anchor="middle" font-size="8" fill="#7f8c8d">Fault</text>
+                        
+                        <circle cx="90" cy="75" r="8" fill="#e74c3c"/>
+                        <text x="90" y="60" text-anchor="middle" font-size="9" fill="#e74c3c">10ms</text>
+                        <text x="90" y="95" text-anchor="middle" font-size="8" fill="#7f8c8d">DEM</text>
+                        
+                        <circle cx="130" cy="75" r="8" fill="#27ae60"/>
+                        <text x="130" y="60" text-anchor="middle" font-size="9" fill="#27ae60">20ms</text>
+                        <text x="130" y="95" text-anchor="middle" font-size="8" fill="#7f8c8d">FIM</text>
+                        
+                        <circle cx="170" cy="75" r="8" fill="#3498db"/>
+                        <text x="170" y="60" text-anchor="middle" font-size="9" fill="#3498db">50ms</text>
+                        <text x="170" y="95" text-anchor="middle" font-size="8" fill="#7f8c8d">DCM</text>
+                        
+                        <text x="100" y="120" text-anchor="middle" font-size="10" font-weight="600" fill="#2c3e50">Response Speed</text>
+                        <text x="100" y="135" text-anchor="middle" font-size="9" fill="#7f8c8d">Critical Path: <20ms</text>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
