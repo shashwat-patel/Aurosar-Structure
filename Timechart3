@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Same-Sheet Multi-Section ECU Timing Diagram Generator
-Creates multiple sections on the same Excel sheet
+File-Based Multi-Section ECU Timing Diagram Generator
+Create complex timing diagrams from simple text files
 """
 
 import openpyxl
@@ -10,18 +10,14 @@ from openpyxl.styles import PatternFill, Border, Side, Alignment, Font
 from openpyxl.utils import get_column_letter
 import os
 
-class SameSheetTimingGenerator:
-    """Timing diagram generator with multiple sections on same sheet"""
+class FileBasedTimingGenerator:
+    """File-based timing diagram generator"""
     
     def __init__(self):
         self.wb = Workbook()
-        self.ws = self.wb.active
-        self.ws.title = "Timing Diagram"
-        
-        # Track sections on same sheet
+        self.ws = None
         self.sections = []
-        self.current_row = 1
-        self.section_spacing = 3  # Rows between sections
+        self.current_section_idx = -1
         
         # Border styles
         self.thin = Side(style='thin', color='000000')
@@ -54,11 +50,6 @@ class SameSheetTimingGenerator:
         
         self.time_units = 50
         
-        # Setup column widths once
-        self.ws.column_dimensions['B'].width = 25
-        for i in range(3, 53):
-            self.ws.column_dimensions[get_column_letter(i)].width = 2.5
-    
     def process_file(self, filename):
         """Process timing diagram file"""
         if not os.path.exists(filename):
@@ -70,8 +61,6 @@ class SameSheetTimingGenerator:
         with open(filename, 'r') as f:
             lines = f.readlines()
         
-        current_section = None
-        
         for line in lines:
             line = line.strip()
             if not line or line.startswith('#'):
@@ -79,99 +68,80 @@ class SameSheetTimingGenerator:
             
             # Process commands
             if line.startswith('SECTION:'):
-                # Start new section on same sheet
-                section_name = line[8:].strip()
-                current_section = self.start_new_section(section_name)
-            
-            elif line.startswith('NEWSECTION:'):
-                # Alternative syntax for clarity
-                section_name = line[11:].strip()
-                current_section = self.start_new_section(section_name)
-            
+                self.start_new_section(line[8:].strip())
             elif line.startswith('SUBSECTION:'):
-                if current_section:
-                    self.add_subsection(current_section, line[11:].strip())
-            
+                self.add_subsection(line[11:].strip())
             elif line.startswith('SIGNAL:'):
-                if current_section:
-                    self.add_signal(current_section, line[7:].strip())
-            
+                self.add_signal(line[7:].strip())
             elif line.startswith('BOX:'):
-                if current_section:
-                    self.add_box_signal(current_section, line[4:].strip())
-            
+                self.add_box_signal(line[4:].strip())
             elif line.startswith('TIMING:'):
-                if current_section:
-                    self.add_timing(current_section, line[7:].strip())
-            
+                self.add_timing(line[7:].strip())
             elif line.startswith('SPACE'):
-                if current_section:
-                    self.add_space(current_section)
-            
+                self.add_space()
             elif ':' in line and not line.startswith('//'):
                 # Simple format: SignalName:Pattern
-                if current_section:
-                    parts = line.split(':', 1)
-                    self.add_signal(current_section, f"{parts[0].strip()}:{parts[1].strip()}")
-        
-        # Finalize all sections
-        for section in self.sections:
-            self.finalize_section(section)
+                parts = line.split(':', 1)
+                self.add_signal(f"{parts[0].strip()}:{parts[1].strip()}")
         
         return True
     
-    def start_new_section(self, section_name):
-        """Start a new section on the same sheet"""
+    def start_new_section(self, section_info):
+        """Start a new main section
+        Format: SECTION:name[,sheet_name]"""
+        parts = section_info.split(',')
+        section_name = parts[0].strip()
+        sheet_name = parts[1].strip() if len(parts) > 1 else section_name[:31]
         
-        # Leave space between sections
-        if self.sections:
-            self.current_row += self.section_spacing
+        # Create new sheet or use existing
+        if self.current_section_idx == -1:
+            self.ws = self.wb.active
+            self.ws.title = sheet_name
+        else:
+            self.ws = self.wb.create_sheet(sheet_name)
+        
+        self.current_section_idx += 1
         
         section = {
             'name': section_name,
-            'start_row': self.current_row,
-            'header_row': self.current_row,
-            'time_row': self.current_row + 1,
-            'first_signal_row': self.current_row + 3,
-            'current_row': self.current_row + 3,
-            'last_signal_row': self.current_row + 3
+            'sheet': self.ws,
+            'current_row': 5,
+            'first_signal_row': 5,
+            'last_signal_row': 5
         }
+        self.sections.append(section)
         
-        # Add section header
-        self.ws.merge_cells(f'B{section["header_row"]}:AZ{section["header_row"]}')
-        header_cell = self.ws.cell(row=section['header_row'], column=2, value=section_name.upper())
-        header_cell.font = Font(size=12, bold=True)
-        header_cell.alignment = Alignment(horizontal='center', vertical='center')
+        # Setup section header
+        self.ws.merge_cells('B2:AZ2')
+        self.ws['B2'] = section_name.upper()
+        self.ws['B2'].font = Font(size=12, bold=True)
+        self.ws['B2'].alignment = Alignment(horizontal='center', vertical='center')
         
-        # Add time header for this section
+        # Column widths
+        self.ws.column_dimensions['B'].width = 25
+        for i in range(3, 53):
+            self.ws.column_dimensions[get_column_letter(i)].width = 2.5
+        
+        # Time header
         for i in range(0, self.time_units, 5):
-            cell = self.ws.cell(row=section['time_row'], column=3+i, value=f"{i*20}ms")
+            cell = self.ws.cell(row=3, column=3+i, value=f"{i*20}ms")
             cell.font = Font(size=9, italic=True)
         
-        # Add vertical grid lines for this section (will extend as signals are added)
-        self.update_grid_lines(section)
-        
-        self.sections.append(section)
-        self.current_row = section['current_row']
-        
-        return section
-    
-    def update_grid_lines(self, section):
-        """Update vertical grid lines for a section"""
+        # Grid lines
         for i in range(0, self.time_units):
             if i % 5 == 0:
-                # Extend grid lines from time row to last signal row
-                for row in range(section['time_row'] + 1, section['last_signal_row'] + 5):
+                for row in range(4, 50):
                     cell = self.ws.cell(row=row, column=3+i)
-                    if not cell.border or not cell.border.left:
-                        cell.border = Border(left=self.dotted)
+                    cell.border = Border(left=self.dotted)
     
-    def add_subsection(self, section, title):
+    def add_subsection(self, title):
         """Add subsection header"""
+        if self.current_section_idx < 0:
+            return
+        
+        section = self.sections[self.current_section_idx]
         row = section['current_row']
         section['current_row'] += 1
-        section['last_signal_row'] = row
-        self.current_row = section['current_row']
         
         self.ws.merge_cells(f'B{row}:D{row}')
         cell = self.ws.cell(row=row, column=2, value=title)
@@ -179,12 +149,13 @@ class SameSheetTimingGenerator:
         cell.fill = PatternFill(start_color='D9D9D9', end_color='D9D9D9', fill_type='solid')
         cell.border = Border(left=self.medium, right=self.medium, 
                            top=self.medium, bottom=self.medium)
-        
-        # Update grid lines
-        self.update_grid_lines(section)
     
-    def add_signal(self, section, signal_info):
-        """Add a signal"""
+    def add_signal(self, signal_info):
+        """Add a signal
+        Format: name:pattern"""
+        if self.current_section_idx < 0:
+            return
+        
         parts = signal_info.split(':', 1)
         if len(parts) != 2:
             return
@@ -192,10 +163,10 @@ class SameSheetTimingGenerator:
         name = parts[0].strip()
         pattern = parts[1].strip()
         
+        section = self.sections[self.current_section_idx]
         row = section['current_row']
         section['current_row'] += 1
         section['last_signal_row'] = row
-        self.current_row = section['current_row']
         
         # Add signal name
         self.ws.cell(row=row, column=2, value=name)
@@ -208,12 +179,13 @@ class SameSheetTimingGenerator:
             self._add_digital(row, pattern)
         
         self.ws.row_dimensions[row].height = 20
-        
-        # Update grid lines
-        self.update_grid_lines(section)
     
-    def add_box_signal(self, section, box_info):
-        """Add box signal"""
+    def add_box_signal(self, box_info):
+        """Add box signal
+        Format: name:start:end[:label]"""
+        if self.current_section_idx < 0:
+            return
+        
         parts = box_info.split(':')
         if len(parts) < 3:
             return
@@ -223,10 +195,10 @@ class SameSheetTimingGenerator:
         end = int(parts[2].strip())
         label = parts[3].strip() if len(parts) > 3 else ""
         
+        section = self.sections[self.current_section_idx]
         row = section['current_row']
         section['current_row'] += 1
         section['last_signal_row'] = row
-        self.current_row = section['current_row']
         
         self.ws.cell(row=row, column=2, value=name)
         self.ws.cell(row=row, column=2).font = Font(size=10, bold=True)
@@ -247,10 +219,13 @@ class SameSheetTimingGenerator:
             cell.alignment = Alignment(horizontal='center', vertical='center')
         
         self.ws.row_dimensions[row].height = 20
-        self.update_grid_lines(section)
     
-    def add_timing(self, section, timing_info):
-        """Add timing mark"""
+    def add_timing(self, timing_info):
+        """Add timing mark
+        Format: start:end:label"""
+        if self.current_section_idx < 0:
+            return
+        
         parts = timing_info.split(':')
         if len(parts) != 3:
             return
@@ -259,10 +234,10 @@ class SameSheetTimingGenerator:
         end = int(parts[1].strip())
         label = parts[2].strip()
         
+        section = self.sections[self.current_section_idx]
         row = section['current_row']
         section['current_row'] += 1
         section['last_signal_row'] = row
-        self.current_row = section['current_row']
         
         mid = (start + end) // 2
         cell = self.ws.cell(row=row, column=3+mid, value=label)
@@ -277,13 +252,11 @@ class SameSheetTimingGenerator:
                 cell.border = Border(right=self.thin, top=self.thin)
             else:
                 cell.border = Border(top=Side(style='thin', color='FF0000'))
-        
-        self.update_grid_lines(section)
     
-    def add_space(self, section):
+    def add_space(self):
         """Add empty row"""
-        section['current_row'] += 1
-        self.current_row = section['current_row']
+        if self.current_section_idx >= 0:
+            self.sections[self.current_section_idx]['current_row'] += 1
     
     def _add_digital(self, row, pattern):
         """Add digital signal with borders"""
@@ -359,99 +332,125 @@ class SameSheetTimingGenerator:
                 current_state = state
                 start_col = i
     
-    def finalize_section(self, section):
-        """Add border around a section"""
-        start_row = section['header_row']
-        end_row = section['last_signal_row']
-        start_col = 2
-        end_col = 52
-        
-        for row in range(start_row, end_row + 1):
-            for col in range(start_col, end_col + 1):
-                if row == start_row or row == end_row or col == start_col or col == end_col:
-                    cell = self.ws.cell(row=row, column=col)
-                    existing = cell.border
-                    cell.border = Border(
-                        left=self.thick if col == start_col else (existing.left if existing else None),
-                        right=self.thick if col == end_col else (existing.right if existing else None),
-                        top=self.thick if row == start_row else (existing.top if existing else None),
-                        bottom=self.thick if row == end_row else (existing.bottom if existing else None)
-                    )
+    def finalize(self):
+        """Finalize all sections with borders"""
+        for section in self.sections:
+            self.ws = section['sheet']
+            
+            start_row = 2
+            end_row = section['last_signal_row']
+            start_col = 2
+            end_col = 52
+            
+            for row in range(start_row, end_row + 1):
+                for col in range(start_col, end_col + 1):
+                    if row == start_row or row == end_row or col == start_col or col == end_col:
+                        cell = self.ws.cell(row=row, column=col)
+                        existing = cell.border
+                        cell.border = Border(
+                            left=self.thick if col == start_col else (existing.left if existing else None),
+                            right=self.thick if col == end_col else (existing.right if existing else None),
+                            top=self.thick if row == start_row else (existing.top if existing else None),
+                            bottom=self.thick if row == end_row else (existing.bottom if existing else None)
+                        )
+            
+            self.ws.sheet_view.showGridLines = False
     
     def save(self, filename):
         """Save the workbook"""
-        self.ws.sheet_view.showGridLines = False
+        self.finalize()
         self.wb.save(filename)
         print(f"✓ Saved: {filename}")
     
     def create_example_file(self, filename):
         """Create an example input file"""
-        example_content = """# Same-Sheet Multi-Section Timing Diagram
-# ========================================
-# All sections appear on the same sheet, stacked vertically
-#
+        example_content = """# ECU Timing Diagram Configuration File
+# =====================================
 # Commands:
-#   SECTION:name       - Start new section (on same sheet)
-#   SUBSECTION:name    - Add subsection header
-#   name:pattern       - Add signal
-#   BOX:name:start:end[:label] - Box signal
-#   TIMING:start:end:label     - Timing annotation
-#   SPACE              - Empty row
+#   SECTION:name[,sheet_name]  - Start new main section
+#   SUBSECTION:name            - Add subsection header
+#   SIGNAL:name:pattern        - Add signal (digital or state)
+#   BOX:name:start:end[:label] - Add box signal
+#   TIMING:start:end:label     - Add timing annotation
+#   SPACE                      - Add empty row
+#   name:pattern               - Shorthand for SIGNAL:name:pattern
+#
+# Digital patterns: 0=low, 1=high, -=don't care, X=undefined
+# State patterns: Space-separated state names (OFF INIT RUN SLEEP)
 
 # ============================================================
-# First Section - MEASUREMENT
+# MEASUREMENT SECTION
 # ============================================================
 SECTION:MEASUREMENT
 
-SUBSECTION:Power Management
-5Y5_State:OFF OFF OFF INIT INIT RUN RUN RUN POWERLATCH POSTRUN1 POSTRUN2 OFF
+SUBSECTION:POWER MANAGEMENT
+5Y5_State:OFF OFF OFF INIT INIT RUN RUN RUN RUN POWERLATCH POSTRUN1 POSTRUN2 OFF OFF
 Battery:00000111111111111111111111111111111111111000000
 Ignition:00000001111111111111111111111111111111100000000
 SPACE
 
-SUBSECTION:Communication
+SUBSECTION:COMMUNICATION
 BOX:Sequence_Mode:5:35:Don't Care
 BOX:CAN_LIN_Wakeup:8:30
 TIMING:10:15:200 ms
-CAN_TX:00000000110011001100110011001100110011000000000
-CAN_RX:00000000001100110011001100110011001100000000000
+CAN_Active:00000001111111111111111111111111111111100000000
+LIN_Active:00000000011111111111111111111111111111000000000
+SPACE
+
+SUBSECTION:CONTROL SIGNALS
+Brake:00000000000011111100000000000000000000000000000
+Throttle:00000000000000000011111111110000000000000000000
+Clock:01010101010101010101010101010101010101010101010
 SPACE
 
 # ============================================================
-# Second Section - OPERATION (Same Sheet, Below First)
+# OPERATION SECTION (New Sheet)
 # ============================================================
 SECTION:OPERATION
 
-SUBSECTION:Motor Control
-Motor_Enable:00000001111111111111111111111111111111000000000
-Motor_PWM:00000000110011001100110011001100110011000000000
-Motor_Dir:00000001111111111111111100000000000000000000000
-TIMING:20:30:Ramp Up
-SPACE
-
-SUBSECTION:System States
+SUBSECTION:SYSTEM STATES
 ECU_Mode:IDLE IDLE READY READY ACTIVE ACTIVE ACTIVE ACTIVE IDLE IDLE
 Charging:OFF OFF OFF READY ACTIVE ACTIVE ACTIVE READY OFF OFF
 SPACE
 
+SUBSECTION:MOTOR CONTROL
+Motor_Enable:00000001111111111111111111111111111111000000000
+Motor_PWM:00000000110011001100110011001100110011000000000
+Motor_Direction:00000001111111111111111100000000000000000000000
+TIMING:20:30:Ramp Up
+SPACE
+
+SUBSECTION:SAFETY MONITORS
+Temp_Monitor:00000000000000111111111111111111110000000000000
+Voltage_OK:11111111111111111111111111111111111111111111111
+Current_Limit:00000000000011111111111111111111100000000000000
+
 # ============================================================
-# Third Section - DIAGNOSTICS (Same Sheet, Below Second)
+# DIAGNOSTICS SECTION (New Sheet)
 # ============================================================
 SECTION:DIAGNOSTICS
 
-SUBSECTION:Error Detection
-Error_Code:OFF OFF OFF OFF ERROR ERROR ERROR OFF OFF OFF OFF OFF
-Warning:00000000000000001111111111000000000000000000000
+SUBSECTION:DIAGNOSTIC MODE
+Diag_Mode:INACTIVE INACTIVE INACTIVE ACTIVE ACTIVE ACTIVE ACTIVE INACTIVE INACTIVE
+Test_Request:00000000001111111111111111111111100000000000000
+Test_Response:00000000000011111111111111111111000000000000000
+SPACE
+
+SUBSECTION:ERROR FLAGS
+Error_Code:OFF OFF OFF OFF OFF ERROR ERROR ERROR OFF OFF OFF OFF OFF
+Warning_Flag:00000000000000001111111111000000000000000000000
 Fault_Reset:00000000000000000000000000000001000000000000000
 TIMING:15:25:Error Active
+SPACE
 
-SUBSECTION:Test Mode
-Test_Enable:00000000001111111111111111111111100000000000000
-Test_Pattern:01010101010101010101010101010101010101010101010
-Test_Result:IDLE IDLE IDLE TEST TEST PASS PASS IDLE IDLE IDLE
+SUBSECTION:MEMORY OPERATIONS
+BOX:EEPROM_Write:10:20:Writing
+BOX:EEPROM_Read:25:35:Reading
+Flash_Update:00000000001111111111100000000000000000000000000
 
 # ============================================================
-# You can add more sections - they all stack on same sheet
+# Add more sections as needed...
+# For 200+ signals, organize them into logical sections
 # ============================================================
 """
         with open(filename, 'w') as f:
@@ -459,38 +458,48 @@ Test_Result:IDLE IDLE IDLE TEST TEST PASS PASS IDLE IDLE IDLE
 
 
 def main():
-    """Main function"""
+    """Main function to create timing diagrams from files"""
     print("\n" + "="*70)
-    print("SAME-SHEET MULTI-SECTION TIMING DIAGRAM GENERATOR")
-    print("="*70)
-    print("All sections appear on the same Excel sheet, stacked vertically")
+    print("FILE-BASED MULTI-SECTION TIMING DIAGRAM GENERATOR")
     print("="*70)
     
-    # Process files
+    # Default file names
     files = [
-        ("same_sheet_timing.txt", "same_sheet_output.xlsx"),
+        ("timing_config.txt", "timing_output.xlsx"),
+        ("custom_timing.txt", "custom_output.xlsx"),
+        ("signals.txt", "signals_output.xlsx")
     ]
     
     for input_file, output_file in files:
         print(f"\nProcessing: {input_file}")
         print("-" * 40)
         
-        generator = SameSheetTimingGenerator()
+        generator = FileBasedTimingGenerator()
         if generator.process_file(input_file):
             generator.save(output_file)
             print(f"✓ Generated: {output_file}")
-            print(f"  Sections: {len(generator.sections)} on same sheet")
         else:
             print(f"  Please edit {input_file} and run again")
     
     print("\n" + "="*70)
-    print("ADVANTAGES OF SAME-SHEET SECTIONS:")
+    print("FILE FORMAT QUICK REFERENCE:")
     print("="*70)
-    print("✓ All sections visible at once")
-    print("✓ Easy to compare signals across sections")
-    print("✓ Single page for printing")
-    print("✓ Better for documentation")
-    print("✓ No sheet switching needed")
+    print("""
+    SECTION:MEASUREMENT           # Start new section
+    SUBSECTION:Power Management   # Add subsection header
+    
+    # Simple format:
+    Power:00001111111100000      # Digital signal
+    State:OFF INIT RUN SLEEP      # State signal
+    
+    # Box signals:
+    BOX:CAN_Wake:10:30:Active    # Box from col 10-30 with label
+    
+    # Timing marks:
+    TIMING:10:15:200ms           # Timing annotation
+    
+    SPACE                        # Empty row
+    """)
     print("="*70)
 
 
