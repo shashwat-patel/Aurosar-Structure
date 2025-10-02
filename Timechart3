@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-SIMPLIFIED ECU Timing Diagram Generator for Excel
-Creates timing diagrams with border-based signal representation
+Multi-Section ECU Timing Diagram Generator for Excel
+Creates timing diagrams with multiple main sections like MEASUREMENT, OPERATION, etc.
 """
 
 import openpyxl
@@ -9,21 +9,21 @@ from openpyxl import Workbook
 from openpyxl.styles import PatternFill, Border, Side, Alignment, Font
 from openpyxl.utils import get_column_letter
 
-class SimpleTimingDiagram:
-    """Super simple timing diagram generator with border-based signals"""
+class MultiSectionTimingDiagram:
+    """Timing diagram generator with multiple main sections"""
     
     def __init__(self):
         self.wb = Workbook()
-        self.ws = self.wb.active
-        self.ws.title = "Timing"
+        self.ws = None
+        self.sections = []  # Store section info
         
-        # Border styles for signals
+        # Border styles
         self.thin = Side(style='thin', color='000000')
         self.medium = Side(style='medium', color='000000')
         self.thick = Side(style='thick', color='000000')
         self.dotted = Side(style='dotted', color='808080')
         
-        # State colors (only for state boxes)
+        # State colors
         self.colors = {
             'OFF': 'FF6B6B',      # Red
             'INIT': 'FFD93D',     # Yellow  
@@ -32,113 +32,119 @@ class SimpleTimingDiagram:
             'WAKE': 'FFE66D',     # Light yellow
             'POST1': '95E1D3',    # Light cyan
             'POST2': 'F38181',    # Light red
+            'POSTRUN1': '95E1D3', # Light cyan
+            'POSTRUN2': 'F38181', # Light red
             'LATCH': '4ECDC4',    # Cyan
-            'POWERLATCH': '4ECDC4',  # Cyan
-            'POSTRUN1': '95E1D3',    # Light cyan
-            'POSTRUN2': 'F38181',    # Light red
-            'START': 'FFD93D',       # Yellow
-            'STARTUP': 'FFD93D',     # Yellow
-            'POWER_OFF': 'FF6B6B',   # Red
-            'RUN_MODE': '6BCF7F',    # Green
+            'POWERLATCH': '4ECDC4', # Cyan
+            'ERROR': 'FF0000',    # Bright red
+            'ACTIVE': '00FF00',   # Bright green
+            'INACTIVE': 'C0C0C0', # Gray
+            'CHARGING': 'FFA500', # Orange
+            'READY': '90EE90',    # Light green
         }
         
-        self.current_row = 3
-        self.time_units = 50  # Total time units to show
+        self.time_units = 50  # Total time units
         
-    def setup_basic_grid(self, title="Timing Diagram"):
-        """Basic setup - just title and grid"""
-        # Title
-        self.ws.merge_cells(f'B1:AZ1')
-        self.ws['B1'] = title
-        self.ws['B1'].font = Font(size=14, bold=True)
-        self.ws['B1'].alignment = Alignment(horizontal='center')
+    def create_section(self, section_name, sheet_name=None):
+        """Create a new main section (like MEASUREMENT, OPERATION, etc.)"""
+        if sheet_name is None:
+            sheet_name = section_name[:31]  # Excel sheet name limit
+        
+        # Create new sheet or use first one
+        if self.ws is None:
+            self.ws = self.wb.active
+            self.ws.title = sheet_name
+        else:
+            self.ws = self.wb.create_sheet(sheet_name)
+        
+        # Store section info
+        section_info = {
+            'name': section_name,
+            'sheet': self.ws,
+            'current_row': 5,
+            'first_signal_row': 5,
+            'last_signal_row': 5
+        }
+        self.sections.append(section_info)
+        
+        # Setup the section
+        self._setup_section_header(section_name)
+        
+        return section_info
+    
+    def _setup_section_header(self, section_name):
+        """Setup header for a section"""
+        # Section name in row 2
+        self.ws.merge_cells('B2:AZ2')
+        self.ws['B2'] = section_name.upper()
+        self.ws['B2'].font = Font(size=12, bold=True)
+        self.ws['B2'].alignment = Alignment(horizontal='center', vertical='center')
         
         # Column widths
-        self.ws.column_dimensions['B'].width = 25  # Signal names
-        for i in range(3, 53):  # 50 time columns
+        self.ws.column_dimensions['B'].width = 25
+        for i in range(3, 53):
             self.ws.column_dimensions[get_column_letter(i)].width = 2.5
-            
-        # Time header (every 5 units = 100ms)
+        
+        # Time header in row 3
         for i in range(0, self.time_units, 5):
-            cell = self.ws.cell(row=2, column=3+i, value=f"{i*20}ms")
+            cell = self.ws.cell(row=3, column=3+i, value=f"{i*20}ms")
             cell.font = Font(size=9, italic=True)
-            
-        # Add vertical dotted grid lines
+        
+        # Vertical grid lines
         for i in range(0, self.time_units):
-            if i % 5 == 0:  # Major grid every 5 units
-                for row in range(3, 50):
+            if i % 5 == 0:
+                for row in range(4, 50):
                     cell = self.ws.cell(row=row, column=3+i)
                     cell.border = Border(left=self.dotted)
     
-    def add(self, signal_name, pattern):
-        """
-        SUPER SIMPLE: Just give signal name and pattern!
+    def add_signal_to_section(self, section_index, signal_name, pattern):
+        """Add a signal to a specific section"""
+        if section_index >= len(self.sections):
+            raise ValueError(f"Section {section_index} does not exist")
         
-        For digital signals:
-            - Use 0 (low), 1 (high), - (don't care), X (undefined)
-            - Transitions are shown with borders:
-              * Rising edge: left + top borders
-              * Falling edge: top + right borders
-              * High level: top border only
-              * Low level: bottom border only
-        
-        For state signals:
-            - Use state names separated by spaces
-        
-        Examples:
-            add("Power", "0000011111111111111111111111111110000000")
-            add("Clock", "0101010101010101010101010101010101010101")
-            add("State", "OFF OFF OFF INIT INIT RUN RUN RUN RUN SLEEP")
-        """
-        row = self.current_row
-        self.current_row += 1
+        section = self.sections[section_index]
+        self.ws = section['sheet']
+        row = section['current_row']
+        section['current_row'] += 1
+        section['last_signal_row'] = row
         
         # Add signal name
         self.ws.cell(row=row, column=2, value=signal_name)
         self.ws.cell(row=row, column=2).font = Font(size=10, bold=True)
         
-        # Handle different pattern types
+        # Handle pattern
         if ' ' in pattern:
-            # State pattern (words separated by spaces)
             self._add_states(row, pattern.split())
         else:
-            # Digital pattern with border-based representation
             self._add_digital_with_borders(row, pattern)
-            
-        # Set row height
+        
         self.ws.row_dimensions[row].height = 20
     
     def _add_digital_with_borders(self, row, pattern):
-        """Add digital signal using borders for transitions"""
-        prev_val = '0'  # Assume starting from low
+        """Add digital signal using borders"""
+        prev_val = '0'
         
         for i, char in enumerate(pattern):
             if i >= self.time_units:
                 break
-                
+            
             cell = self.ws.cell(row=row, column=3+i)
             
-            # Determine what borders to apply based on transition
             left_border = None
             right_border = None
             top_border = None
             bottom_border = None
             
             if char in ['0', '1']:
-                # Check for transitions
                 if i > 0:
                     prev_val = pattern[i-1] if i > 0 else '0'
                 
                 if prev_val != char:
-                    # Transition detected
                     if char == '1':
-                        # Rising edge: left + top borders
                         left_border = self.thin
                         top_border = self.thin
                     else:
-                        # Falling edge: top + right borders
                         if i > 0:
-                            # Add right border to previous cell
                             prev_cell = self.ws.cell(row=row, column=3+i-1)
                             prev_border = prev_cell.border
                             prev_cell.border = Border(
@@ -149,27 +155,20 @@ class SimpleTimingDiagram:
                             )
                         top_border = self.thin
                 
-                # Steady state
                 if char == '1':
-                    # High level: top border
                     if not top_border:
                         top_border = self.thin
                 else:
-                    # Low level: bottom border
                     bottom_border = self.thin
             
             elif char == '-':
-                # Don't care - draw dashed middle line
                 top_border = self.dotted
-                
             elif char == 'X':
-                # Undefined - draw box
                 left_border = self.dotted
                 right_border = self.dotted
                 top_border = self.dotted
                 bottom_border = self.dotted
             
-            # Apply the borders
             if left_border or right_border or top_border or bottom_border:
                 cell.border = Border(
                     left=left_border,
@@ -179,74 +178,61 @@ class SimpleTimingDiagram:
                 )
     
     def _add_states(self, row, states):
-        """Add state machine signal from list of states"""
+        """Add state machine signal"""
         current_state = states[0]
         start_col = 0
         
-        for i, state in enumerate(states + ['END']):  # Add END to trigger last state
+        for i, state in enumerate(states + ['END']):
             if state != current_state or i == len(states):
-                # State changed, draw the previous state
                 end_col = i - 1
                 
-                # Merge cells for this state
                 if end_col >= start_col:
-                    if end_col == start_col:
-                        # Single cell
-                        cell = self.ws.cell(row=row, column=3+start_col)
-                    else:
-                        # Merge multiple cells
+                    if end_col > start_col:
                         self.ws.merge_cells(
                             start_row=row, start_column=3+start_col,
                             end_row=row, end_column=3+end_col
                         )
-                        cell = self.ws.cell(row=row, column=3+start_col)
                     
-                    # Set state text and color
+                    cell = self.ws.cell(row=row, column=3+start_col)
                     cell.value = current_state
                     cell.alignment = Alignment(horizontal='center', vertical='center')
                     cell.font = Font(size=9, bold=True)
                     
-                    # Apply color
                     color = self.colors.get(current_state.upper(), 'FFFFFF')
                     cell.fill = PatternFill(start_color=color, end_color=color, fill_type='solid')
                     
-                    # Add borders around state box
                     for col in range(3+start_col, 3+end_col+1):
                         c = self.ws.cell(row=row, column=col)
-                        left = self.thin if col == 3+start_col else None
-                        right = self.thin if col == 3+end_col else None
                         c.border = Border(
-                            left=left,
-                            right=right,
+                            left=self.thin if col == 3+start_col else None,
+                            right=self.thin if col == 3+end_col else None,
                             top=self.thin,
                             bottom=self.thin
                         )
                 
-                # Update for next state
                 current_state = state
                 start_col = i
     
-    def add_box_signal(self, signal_name, start, end, label=""):
-        """Add a box-style signal (like CAN/LIN Wakeup)"""
-        row = self.current_row
-        self.current_row += 1
+    def add_box_to_section(self, section_index, signal_name, start, end, label=""):
+        """Add a box signal to a section"""
+        section = self.sections[section_index]
+        self.ws = section['sheet']
+        row = section['current_row']
+        section['current_row'] += 1
+        section['last_signal_row'] = row
         
-        # Add signal name
         self.ws.cell(row=row, column=2, value=signal_name)
         self.ws.cell(row=row, column=2).font = Font(size=10, bold=True)
         
-        # Draw box
         for i in range(start, end + 1):
             cell = self.ws.cell(row=row, column=3+i)
-            
-            left = self.thin if i == start else None
-            right = self.thin if i == end else None
-            top = self.thin
-            bottom = self.thin
-            
-            cell.border = Border(left=left, right=right, top=top, bottom=bottom)
+            cell.border = Border(
+                left=self.thin if i == start else None,
+                right=self.thin if i == end else None,
+                top=self.thin,
+                bottom=self.thin
+            )
         
-        # Add label if provided
         if label:
             mid = (start + end) // 2
             cell = self.ws.cell(row=row, column=3+mid, value=label)
@@ -255,14 +241,12 @@ class SimpleTimingDiagram:
         
         self.ws.row_dimensions[row].height = 20
     
-    def space(self):
-        """Add empty row for spacing"""
-        self.current_row += 1
-        
-    def section(self, title):
-        """Add section header"""
-        row = self.current_row
-        self.current_row += 1
+    def add_subsection_to_section(self, section_index, title):
+        """Add a subsection header within a section"""
+        section = self.sections[section_index]
+        self.ws = section['sheet']
+        row = section['current_row']
+        section['current_row'] += 1
         
         self.ws.merge_cells(f'B{row}:D{row}')
         cell = self.ws.cell(row=row, column=2, value=title)
@@ -274,19 +258,24 @@ class SimpleTimingDiagram:
             top=self.medium,
             bottom=self.medium
         )
+    
+    def add_space_to_section(self, section_index):
+        """Add empty row to a section"""
+        self.sections[section_index]['current_row'] += 1
+    
+    def add_timing_mark_to_section(self, section_index, start_time, end_time, label):
+        """Add timing annotation to a section"""
+        section = self.sections[section_index]
+        self.ws = section['sheet']
+        row = section['current_row']
+        section['current_row'] += 1
+        section['last_signal_row'] = row
         
-    def timing_mark(self, start_time, end_time, label):
-        """Add timing annotation (like "200ms")"""
-        row = self.current_row
-        self.current_row += 1
-        
-        # Add label at midpoint
         mid = (start_time + end_time) // 2
         cell = self.ws.cell(row=row, column=3+mid, value=label)
         cell.font = Font(size=9, italic=True, color='FF0000')
         cell.alignment = Alignment(horizontal='center')
         
-        # Draw line with end markers
         for i in range(start_time, end_time + 1):
             cell = self.ws.cell(row=row, column=3+i)
             if i == start_time:
@@ -296,288 +285,205 @@ class SimpleTimingDiagram:
             else:
                 cell.border = Border(top=Side(style='thin', color='FF0000'))
     
-    def save(self, filename="timing.xlsx"):
-        """Save the file"""
-        # Add main border around entire diagram
-        self.add_main_border()
+    def finalize_section(self, section_index):
+        """Add main border around a section"""
+        section = self.sections[section_index]
+        self.ws = section['sheet']
         
-        # Remove gridlines for cleaner look
+        start_row = 2
+        end_row = section['last_signal_row']
+        start_col = 2
+        end_col = 52
+        
+        for row in range(start_row, end_row + 1):
+            for col in range(start_col, end_col + 1):
+                if row == start_row or row == end_row or col == start_col or col == end_col:
+                    cell = self.ws.cell(row=row, column=col)
+                    existing = cell.border
+                    cell.border = Border(
+                        left=self.thick if col == start_col else (existing.left if existing else None),
+                        right=self.thick if col == end_col else (existing.right if existing else None),
+                        top=self.thick if row == start_row else (existing.top if existing else None),
+                        bottom=self.thick if row == end_row else (existing.bottom if existing else None)
+                    )
+        
         self.ws.sheet_view.showGridLines = False
+    
+    def save(self, filename="multi_section_timing.xlsx"):
+        """Save the complete workbook"""
+        # Finalize all sections
+        for i in range(len(self.sections)):
+            self.finalize_section(i)
+        
         self.wb.save(filename)
         print(f"✓ Saved: {filename}")
+
+
+def create_multi_section_diagram():
+    """Create a timing diagram with multiple main sections"""
     
-    def add_main_border(self):
-        """Add thick border around entire diagram"""
-        # Find the last row with content
-        last_row = self.current_row - 1
+    diagram = MultiSectionTimingDiagram()
+    
+    # ==========================================================================
+    # SECTION 1: MEASUREMENT
+    # ==========================================================================
+    measurement = diagram.create_section("MEASUREMENT")
+    idx = 0  # Section index
+    
+    # Add subsections and signals
+    diagram.add_subsection_to_section(idx, "POWER MANAGEMENT")
+    diagram.add_signal_to_section(idx, "5Y5 State", 
+        "OFF OFF OFF INIT INIT RUN RUN RUN RUN POWERLATCH POWERLATCH POSTRUN1 POSTRUN2 OFF OFF")
+    diagram.add_signal_to_section(idx, "Battery", "00000111111111111111111111111111111111111000000")
+    diagram.add_signal_to_section(idx, "Ignition", "00000001111111111111111111111111111111100000000")
+    diagram.add_space_to_section(idx)
+    
+    diagram.add_subsection_to_section(idx, "COMMUNICATION")
+    diagram.add_box_to_section(idx, "Sequence Mode", 5, 35, "Don't Care")
+    diagram.add_box_to_section(idx, "CAN/LIN Wakeup", 8, 30)
+    diagram.add_timing_mark_to_section(idx, 10, 15, "200 ms")
+    diagram.add_space_to_section(idx)
+    
+    diagram.add_signal_to_section(idx, "CAN Active", "00000001111111111111111111111111111111100000000")
+    diagram.add_signal_to_section(idx, "LIN Active", "00000000011111111111111111111111111111000000000")
+    diagram.add_space_to_section(idx)
+    
+    diagram.add_subsection_to_section(idx, "CONTROL SIGNALS")
+    diagram.add_signal_to_section(idx, "Brake", "00000000000011111100000000000000000000000000000")
+    diagram.add_signal_to_section(idx, "Throttle", "00000000000000000011111111110000000000000000000")
+    
+    # ==========================================================================
+    # SECTION 2: OPERATION
+    # ==========================================================================
+    operation = diagram.create_section("OPERATION")
+    idx = 1  # Section index
+    
+    diagram.add_subsection_to_section(idx, "SYSTEM STATES")
+    diagram.add_signal_to_section(idx, "ECU Mode", 
+        "INACTIVE INACTIVE READY READY ACTIVE ACTIVE ACTIVE ACTIVE INACTIVE INACTIVE")
+    diagram.add_signal_to_section(idx, "Charging State", 
+        "OFF OFF OFF READY CHARGING CHARGING CHARGING READY OFF OFF")
+    diagram.add_space_to_section(idx)
+    
+    diagram.add_subsection_to_section(idx, "MOTOR CONTROL")
+    diagram.add_signal_to_section(idx, "Motor Enable", "00000001111111111111111111111111111111000000000")
+    diagram.add_signal_to_section(idx, "Motor PWM", "00000000110011001100110011001100110011000000000")
+    diagram.add_signal_to_section(idx, "Motor Direction", "00000001111111111111111100000000000000000000000")
+    diagram.add_timing_mark_to_section(idx, 20, 30, "Ramp Up")
+    diagram.add_space_to_section(idx)
+    
+    diagram.add_subsection_to_section(idx, "SAFETY MONITORS")
+    diagram.add_signal_to_section(idx, "Temp Monitor", "00000000000000111111111111111111110000000000000")
+    diagram.add_signal_to_section(idx, "Voltage Monitor", "11111111111111111111111111111111111111111111111")
+    diagram.add_signal_to_section(idx, "Current Limit", "00000000000011111111111111111111100000000000000")
+    
+    # ==========================================================================
+    # SECTION 3: DIAGNOSTICS
+    # ==========================================================================
+    diagnostics = diagram.create_section("DIAGNOSTICS")
+    idx = 2  # Section index
+    
+    diagram.add_subsection_to_section(idx, "DIAGNOSTIC MODE")
+    diagram.add_signal_to_section(idx, "Diag Mode", 
+        "INACTIVE INACTIVE INACTIVE ACTIVE ACTIVE ACTIVE ACTIVE INACTIVE INACTIVE INACTIVE")
+    diagram.add_signal_to_section(idx, "Test Request", "00000000001111111111111111111111100000000000000")
+    diagram.add_signal_to_section(idx, "Test Response", "00000000000011111111111111111111000000000000000")
+    diagram.add_space_to_section(idx)
+    
+    diagram.add_subsection_to_section(idx, "ERROR FLAGS")
+    diagram.add_signal_to_section(idx, "Error Code", 
+        "OFF OFF OFF OFF OFF ERROR ERROR ERROR OFF OFF OFF OFF OFF OFF OFF")
+    diagram.add_signal_to_section(idx, "Warning Flag", "00000000000000001111111111000000000000000000000")
+    diagram.add_signal_to_section(idx, "Fault Reset", "00000000000000000000000000000001000000000000000")
+    diagram.add_timing_mark_to_section(idx, 15, 25, "Error Active")
+    diagram.add_space_to_section(idx)
+    
+    diagram.add_subsection_to_section(idx, "MEMORY OPERATIONS")
+    diagram.add_box_to_section(idx, "EEPROM Write", 10, 20, "Writing")
+    diagram.add_box_to_section(idx, "EEPROM Read", 25, 35, "Reading")
+    diagram.add_signal_to_section(idx, "Flash Update", "00000000001111111111100000000000000000000000000")
+    
+    # Save the complete diagram
+    diagram.save("multi_section_timing.xlsx")
+    
+    return diagram
+
+
+def create_custom_sections_from_input():
+    """Create custom sections from user input"""
+    
+    diagram = MultiSectionTimingDiagram()
+    
+    # Define your sections here
+    sections_config = [
+        {
+            'name': 'MEASUREMENT',
+            'signals': [
+                ('5Y5 State', 'OFF OFF INIT RUN RUN RUN POWERLATCH POSTRUN1 POSTRUN2 OFF'),
+                ('Power', '00000111111111111111111111111111111111111000000'),
+                ('CAN', '00000001111111111111111111111111111111100000000'),
+            ]
+        },
+        {
+            'name': 'OPERATION',
+            'signals': [
+                ('Motor', '00000001111111111111111111111111111111000000000'),
+                ('Brake', '00000000000011111100000000000000000000000000000'),
+                ('Status', 'IDLE IDLE INIT READY ACTIVE ACTIVE ACTIVE IDLE IDLE IDLE'),
+            ]
+        },
+        {
+            'name': 'TEST_MODE',
+            'signals': [
+                ('Test Enable', '00000000001111111111111111111111100000000000000'),
+                ('Test Pattern', '01010101010101010101010101010101010101010101010'),
+                ('Test Result', 'IDLE IDLE IDLE TEST TEST PASS PASS IDLE IDLE IDLE'),
+            ]
+        }
+    ]
+    
+    # Create sections and add signals
+    for idx, section_config in enumerate(sections_config):
+        diagram.create_section(section_config['name'])
         
-        # Add MEASUREMENT label and box
-        self.ws.merge_cells('B1:D1')
-        self.ws['B1'] = 'MEASUREMENT'
-        self.ws['B1'].font = Font(size=12, bold=True)
-        self.ws['B1'].alignment = Alignment(horizontal='center')
+        for signal_name, pattern in section_config['signals']:
+            diagram.add_signal_to_section(idx, signal_name, pattern)
         
-        # Apply thick border
-        for row in range(1, last_row + 1):
-            # Left border
-            cell = self.ws.cell(row=row, column=2)
-            border = cell.border
-            cell.border = Border(
-                left=self.thick,
-                right=border.right,
-                top=self.thick if row == 1 else border.top,
-                bottom=self.thick if row == last_row else border.bottom
-            )
-            
-            # Right border
-            cell = self.ws.cell(row=row, column=52)
-            border = cell.border
-            cell.border = Border(
-                left=border.left,
-                right=self.thick,
-                top=self.thick if row == 1 else border.top,
-                bottom=self.thick if row == last_row else border.bottom
-            )
-        
-        # Top and bottom borders
-        for col in range(2, 53):
-            # Top
-            cell = self.ws.cell(row=1, column=col)
-            border = cell.border
-            cell.border = Border(
-                left=self.thick if col == 2 else border.left,
-                right=self.thick if col == 52 else border.right,
-                top=self.thick,
-                bottom=border.bottom
-            )
-            
-            # Bottom
-            cell = self.ws.cell(row=last_row, column=col)
-            border = cell.border
-            cell.border = Border(
-                left=self.thick if col == 2 else border.left,
-                right=self.thick if col == 52 else border.right,
-                top=border.top,
-                bottom=self.thick
-            )
+        # Add timing mark to each section
+        diagram.add_timing_mark_to_section(idx, 10, 20, f"Phase {idx+1}")
+    
+    diagram.save("custom_sections_timing.xlsx")
+    print("✓ Created timing diagram with custom sections")
 
-
-# ============================================================================
-# SUPER SIMPLE INPUT FORMAT - Just edit these strings!
-# ============================================================================
-
-def create_timing_from_simple_input():
-    """
-    CREATE YOUR TIMING DIAGRAM HERE!
-    Just edit the patterns below - it's that simple!
-    
-    Pattern format:
-    - Digital signals: Use 0 (low), 1 (high), - (don't care), X (undefined)
-      Transitions shown with borders: rising edge (left+top), falling edge (top+right)
-    - State signals: Use state names separated by spaces
-    - Box signals: Use add_box_signal() for boxed regions
-    """
-    
-    # Create diagram
-    t = SimpleTimingDiagram()
-    t.setup_basic_grid("ECU Timing Diagram")
-    
-    # Skip to row 4 for signals
-    t.current_row = 4
-    
-    # ===== DEFINE YOUR SIGNALS HERE =====
-    
-    # System signals
-    t.section("SYSTEM")
-    t.add("5Y5 State", "OFF OFF OFF OFF INIT INIT RUN RUN RUN RUN RUN RUN POWERLATCH POWERLATCH POWERLATCH POWERLATCH POSTRUN1 POSTRUN1 POSTRUN1 POSTRUN2 POSTRUN2 POSTRUN2 OFF OFF OFF")
-    t.add("Power", "00000111111111111111111111111111111111111111100000")
-    t.add("Ignition", "00000001111111111111111111111111111111111111000000")
-    t.space()
-    
-    # Add Sequence mode as a box
-    t.add_box_signal("Sequence mode", 5, 40, "Don't Care")
-    t.space()
-    
-    # Add CAN/LIN Wakeup as a box
-    t.add_box_signal("CAN/LIN Wakeup", 8, 35)
-    t.timing_mark(10, 15, "200 ms")
-    t.space()
-    
-    # Communication
-    t.section("COMMUNICATION")
-    t.add("CAN TX", "00000000111111111111111111111111111111110000000000")
-    t.add("CAN RX", "00000000001111111111111111111111111111000000000000")
-    t.add("LIN Active", "00000000001111111111111111111111111111000000000000")
-    t.space()
-    
-    # Control signals  
-    t.section("CONTROL")
-    t.add("Brake", "00000000000011111100000000000000000000000000000000")
-    t.add("Throttle", "00000000000000000011111111110000000000000000000000")
-    t.space()
-    
-    # Wake/Sleep states
-    t.section("WAKE/SLEEP")
-    t.add("Wake Command", "SLEEP SLEEP SLEEP WAKE WAKE WAKE WAKE WAKE WAKE WAKE WAKE WAKE WAKE SLEEP SLEEP SLEEP")
-    t.space()
-    
-    # Periodic signals with transitions
-    t.section("PERIODIC")
-    t.add("Clock", "01010101010101010101010101010101010101010101010101")
-    t.add("PWM", "11001100110011001100110011001100110011001100110011")
-    t.add("Heartbeat", "10000000100000001000000010000000100000001000000010")
-    t.space()
-    
-    # AVCC signals showing transitions
-    t.section("POWER SUPPLIES")
-    t.add("AVCC 1", "00000000001111111111111111111111111111110000000000")
-    t.add("AVCC 2", "00000000000011111111111111111111111111000000000000")
-    t.add("AVCC 3", "00000000000001111111111111111111111110000000000000")
-    t.space()
-    
-    # More timing marks
-    t.timing_mark(20, 25, "100ms")
-    t.timing_mark(30, 40, "Shutdown")
-    
-    # Save
-    t.save("my_timing_diagram.xlsx")
-
-
-def create_from_text_file():
-    """
-    EVEN EASIER: Define your signals in a text file!
-    
-    Create a file 'signals.txt' with format:
-    SECTION:System
-    Power:00000111111111111111111111110000
-    State:OFF OFF OFF INIT RUN RUN RUN SLEEP
-    Clock:01010101010101010101010101010101
-    BOX:CAN_Wake:10:35:Active
-    TIMING:5:10:200ms
-    """
-    
-    t = SimpleTimingDiagram()
-    t.setup_basic_grid("My Timing Diagram")
-    t.current_row = 4
-    
-    # Read from file
-    try:
-        with open('signals.txt', 'r') as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith('#'):
-                    continue  # Skip empty lines and comments
-                    
-                if line.startswith('SECTION:'):
-                    t.section(line.split(':', 1)[1])
-                elif line.startswith('SPACE'):
-                    t.space()
-                elif line.startswith('BOX:'):
-                    # Format: BOX:name:start:end:label
-                    parts = line.split(':')
-                    t.add_box_signal(parts[1], int(parts[2]), int(parts[3]), 
-                                    parts[4] if len(parts) > 4 else "")
-                elif line.startswith('TIMING:'):
-                    parts = line.split(':')[1].split(',')
-                    t.timing_mark(int(parts[0]), int(parts[1]), parts[2])
-                elif ':' in line:
-                    name, pattern = line.split(':', 1)
-                    t.add(name, pattern)
-                    
-        t.save("timing_from_file.xlsx")
-        
-    except FileNotFoundError:
-        print("Creating example signals.txt file...")
-        with open('signals.txt', 'w') as f:
-            f.write("""# ECU Timing Signals - Border-based representation
-# Format: SignalName:Pattern
-# Use 0/1 for digital (shown with border transitions)
-# Use state names with spaces for state boxes
-
-SECTION:Power Management
-5Y5_State:OFF OFF OFF OFF INIT INIT INIT RUN RUN RUN RUN RUN RUN RUN POSTRUN1 POSTRUN1 POSTRUN2 OFF
-Battery:00000111111111111111111111111111111111111000000000
-Ignition:00000000111111111111111111111111111111100000000000
-SPACE
-
-BOX:Sequence_Mode:5:40:Don't Care
-BOX:CAN_LIN_Wakeup:8:35:
-TIMING:10,15,200ms
-SPACE
-
-SECTION:Communication  
-CAN_TX:00000000110011001100110011001100110011000000000000
-CAN_RX:00000000001100110011001100110011001100000000000000
-SPACE
-
-SECTION:Control
-Brake:00000000000011111000000000000000000000000000000000
-Throttle:00000000000000000001111111111111000000000000000000
-SPACE
-
-SECTION:Power Supplies
-AVCC_1:00000000001111111111111111111111111111110000000000
-AVCC_2:00000000000011111111111111111111111111000000000000
-AVCC_3:00000000000001111111111111111111111110000000000000
-""")
-        print("✓ Created signals.txt - Edit it and run again!")
-
-
-# ============================================================================
-# MAIN EXECUTION
-# ============================================================================
 
 if __name__ == "__main__":
     print("\n" + "="*60)
-    print("ECU TIMING DIAGRAM GENERATOR - BORDER-BASED SIGNALS")
+    print("MULTI-SECTION ECU TIMING DIAGRAM GENERATOR")
     print("="*60)
-    print("\nDigital signals use borders for transitions:")
-    print("  • Rising edge: ┌─ (left + top borders)")
-    print("  • High level: ─── (top border)")
-    print("  • Falling edge: ─┐ (top + right borders)")
-    print("  • Low level: ___ (bottom border)")
+    print("Creating timing diagrams with multiple main sections...")
     print("="*60)
     
-    # Method 1: Direct code
-    print("\n1. Creating timing diagram from code...")
-    create_timing_from_simple_input()
+    # Create multi-section diagram
+    print("\n1. Creating multi-section timing diagram...")
+    create_multi_section_diagram()
+    print("   • MEASUREMENT section (Sheet 1)")
+    print("   • OPERATION section (Sheet 2)")
+    print("   • DIAGNOSTICS section (Sheet 3)")
     
-    # Method 2: From text file
-    print("\n2. Creating from text file...")
-    create_from_text_file()
+    # Create custom sections
+    print("\n2. Creating custom sections example...")
+    create_custom_sections_from_input()
+    print("   • MEASUREMENT section")
+    print("   • OPERATION section")
+    print("   • TEST_MODE section")
     
     print("\n" + "="*60)
-    print("✓ ALL DONE! Check your Excel files:")
-    print("  - my_timing_diagram.xlsx")
-    print("  - timing_from_file.xlsx (or edit signals.txt)")
-    print("\nThe timing diagrams now use borders for signal transitions,")
-    print("exactly like in your reference image!")
+    print("✓ COMPLETE! Generated files:")
+    print("  • multi_section_timing.xlsx (3 sections on different sheets)")
+    print("  • custom_sections_timing.xlsx (custom sections)")
+    print("\nEach section has:")
+    print("  • Its own bordered box with section name")
+    print("  • Subsections for organization")
+    print("  • Digital and state signals")
+    print("  • Timing annotations")
     print("="*60)
-
-
-# ============================================================================
-# QUICK REFERENCE
-# ============================================================================
-"""
-QUICK REFERENCE FOR PATTERNS:
-
-Digital Patterns (with border transitions):
-  "00001111000"     - Shows rising and falling edges with borders
-  "01010101010"     - Clock with transitions at each change
-  "10001000100"     - Periodic pulses
-  
-State Patterns (with colored boxes):
-  "OFF OFF ON ON"   - Simple states in boxes
-  "SLEEP INIT RUN"  - ECU states with colors
-  
-Box Signals:
-  add_box_signal("CAN Wake", 10, 35, "Active")
-  
-Border representation:
-  Rising:  ┌─────  (left + top borders)
-  High:    ───────  (top border only)
-  Falling: ─────┐  (top + right borders)  
-  Low:     _______  (bottom border only)
-
-That's it! Super simple with proper border-based transitions!
-"""
