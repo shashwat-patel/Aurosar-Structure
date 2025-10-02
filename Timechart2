@@ -1,0 +1,505 @@
+#!/usr/bin/env python3
+"""
+ECU Timing Diagram Generator - EXACT IMAGE FORMAT
+Creates timing diagrams matching your exact image specifications
+"""
+
+import openpyxl
+from openpyxl import Workbook
+from openpyxl.styles import PatternFill, Border, Side, Alignment, Font
+from openpyxl.utils import get_column_letter
+
+class ExactTimingDiagram:
+    """Generate exact timing diagram matching the image format"""
+    
+    def __init__(self):
+        self.wb = Workbook()
+        self.ws = self.wb.active
+        self.ws.title = "Timing"
+        
+        # Starting positions matching image
+        self.label_col_start = 2  # Column B
+        self.label_col_end = 5    # Column E (for merged labels)
+        self.signal_start_col = 7  # Column G
+        self.header_row = 1
+        self.first_signal_row = 3
+        
+        # Time configuration
+        self.time_cols = 45  # Number of time columns
+        
+        # Define exact border styles from image
+        self.define_exact_styles()
+        
+    def define_exact_styles(self):
+        """Define exact styles matching the image"""
+        # Border styles
+        self.thin_solid = Side(style='thin', color='000000')
+        self.thick_solid = Side(style='thick', color='000000')
+        self.dotted = Side(style='dotted', color='404040')
+        
+        # Main border box (thick outline)
+        self.main_border = Border(
+            left=self.thick_solid,
+            right=self.thick_solid,
+            top=self.thick_solid,
+            bottom=self.thick_solid
+        )
+        
+        # Signal box border (solid lines for signals)
+        self.signal_border = Border(
+            left=self.thin_solid,
+            right=self.thin_solid,
+            top=self.thin_solid,
+            bottom=self.thin_solid
+        )
+        
+        # Vertical grid lines (dotted)
+        self.grid_vertical = Border(
+            left=self.dotted,
+            right=None,
+            top=None,
+            bottom=None
+        )
+        
+        # Colors
+        self.colors = {
+            'high': PatternFill(start_color='B8CCE4', end_color='B8CCE4', fill_type='solid'),
+            'low': PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid'),
+            'header': PatternFill(start_color='F2F2F2', end_color='F2F2F2', fill_type='solid'),
+            'label_bg': PatternFill(start_color='FAFAFA', end_color='FAFAFA', fill_type='solid')
+        }
+        
+        # Fonts
+        self.label_font = Font(name='Arial', size=10, bold=False)
+        self.header_font = Font(name='Arial', size=10, bold=True)
+        self.small_font = Font(name='Arial', size=9)
+        
+    def setup_grid(self):
+        """Set up the exact grid structure from image"""
+        # Set column widths
+        for col in range(1, 50):
+            if col < self.signal_start_col:
+                self.ws.column_dimensions[get_column_letter(col)].width = 3
+            else:
+                self.ws.column_dimensions[get_column_letter(col)].width = 1.5
+        
+        # Set the label column wider
+        self.ws.column_dimensions['B'].width = 8
+        self.ws.column_dimensions['C'].width = 12
+        
+        # Add vertical dotted grid lines at regular intervals
+        for col in range(self.signal_start_col, self.signal_start_col + self.time_cols):
+            # Major grid every 5 columns
+            if (col - self.signal_start_col) % 5 == 0:
+                for row in range(1, 40):
+                    cell = self.ws.cell(row=row, column=col)
+                    if row >= self.first_signal_row:
+                        current = cell.border
+                        cell.border = Border(
+                            left=self.dotted,
+                            right=current.right,
+                            top=current.top,
+                            bottom=current.bottom
+                        )
+        
+        # Add header markers
+        self.add_header_marks()
+        
+    def add_header_marks(self):
+        """Add the letter markers at the top (matching image columns)"""
+        letters = ['B', 'C', 'D', 'E', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 
+                  'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 
+                  'Y', 'Z', 'AA', 'AB']
+        
+        for i, letter in enumerate(letters[:self.time_cols//2]):
+            if i < 4:
+                col = self.label_col_start + i
+            else:
+                col = self.signal_start_col + (i-4)*2
+            
+            if col < self.signal_start_col + self.time_cols:
+                cell = self.ws.cell(row=1, column=col, value=letter)
+                cell.font = Font(name='Arial', size=8, color='808080')
+                cell.alignment = Alignment(horizontal='center')
+    
+    def add_measurement_section(self, start_row):
+        """Add MEASUREMENT section header"""
+        # Merge cells for "MEASUREMENT" label
+        self.ws.merge_cells(
+            start_row=start_row, start_column=self.label_col_start,
+            end_row=start_row, end_column=self.label_col_end
+        )
+        
+        cell = self.ws.cell(row=start_row, column=self.label_col_start, value="MEASUREMENT")
+        cell.font = self.header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = self.main_border
+        
+        # Draw the main box around entire measurement section
+        for col in range(self.label_col_start, self.signal_start_col + self.time_cols):
+            for row in range(start_row, start_row + 20):
+                cell = self.ws.cell(row=row, column=col)
+                # Apply main border to edges
+                if row == start_row or row == start_row + 19:
+                    if col == self.label_col_start:
+                        cell.border = Border(left=self.thick_solid, top=self.thick_solid if row == start_row else None,
+                                           bottom=self.thick_solid if row != start_row else None)
+                    elif col == self.signal_start_col + self.time_cols - 1:
+                        cell.border = Border(right=self.thick_solid, top=self.thick_solid if row == start_row else None,
+                                           bottom=self.thick_solid if row != start_row else None)
+                    else:
+                        cell.border = Border(top=self.thick_solid if row == start_row else None,
+                                           bottom=self.thick_solid if row != start_row else None)
+                elif col == self.label_col_start:
+                    cell.border = Border(left=self.thick_solid)
+                elif col == self.signal_start_col + self.time_cols - 1:
+                    cell.border = Border(right=self.thick_solid)
+    
+    def add_state_boxes(self, row, label, states_config):
+        """Add state boxes exactly like in the image
+        
+        Args:
+            row: Starting row
+            label: Signal label (e.g., "5Y5 State")
+            states_config: List of (start_col, width, text) tuples
+        """
+        # Add label
+        self.ws.merge_cells(
+            start_row=row, start_column=self.label_col_start,
+            end_row=row + 2, end_column=self.label_col_end
+        )
+        label_cell = self.ws.cell(row=row, column=self.label_col_start, value=label)
+        label_cell.font = self.label_font
+        label_cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
+        
+        # Add state boxes
+        for start, width, text in states_config:
+            # Top row of state box
+            self.ws.merge_cells(
+                start_row=row, start_column=self.signal_start_col + start,
+                end_row=row, end_column=self.signal_start_col + start + width - 1
+            )
+            
+            # Middle row with text
+            self.ws.merge_cells(
+                start_row=row + 1, start_column=self.signal_start_col + start,
+                end_row=row + 1, end_column=self.signal_start_col + start + width - 1
+            )
+            text_cell = self.ws.cell(row=row + 1, column=self.signal_start_col + start, value=text)
+            text_cell.font = Font(name='Arial', size=8)
+            text_cell.alignment = Alignment(horizontal='center', vertical='center')
+            
+            # Bottom row
+            self.ws.merge_cells(
+                start_row=row + 2, start_column=self.signal_start_col + start,
+                end_row=row + 2, end_column=self.signal_start_col + start + width - 1
+            )
+            
+            # Apply borders to create box
+            for r in range(row, row + 3):
+                for c in range(self.signal_start_col + start, self.signal_start_col + start + width):
+                    cell = self.ws.cell(row=r, column=c)
+                    left = self.thin_solid if c == self.signal_start_col + start else None
+                    right = self.thin_solid if c == self.signal_start_col + start + width - 1 else None
+                    top = self.thin_solid if r == row else None
+                    bottom = self.thin_solid if r == row + 2 else None
+                    
+                    if left or right or top or bottom:
+                        cell.border = Border(left=left, right=right, top=top, bottom=bottom)
+    
+    def add_continuous_box(self, row, label, start_col, end_col, height=1):
+        """Add a continuous box signal (like Sequence mode)"""
+        # Add label
+        label_cell = self.ws.cell(row=row, column=self.label_col_start, value=label)
+        label_cell.font = self.label_font
+        label_cell.alignment = Alignment(horizontal='left', vertical='center')
+        
+        # Draw continuous box
+        for r in range(row, row + height):
+            for c in range(self.signal_start_col + start_col, self.signal_start_col + end_col + 1):
+                cell = self.ws.cell(row=r, column=c)
+                
+                # Determine borders
+                left = self.thin_solid if c == self.signal_start_col + start_col else None
+                right = self.thin_solid if c == self.signal_start_col + end_col else None
+                top = self.thin_solid if r == row else None
+                bottom = self.thin_solid if r == row + height - 1 else None
+                
+                if left or right or top or bottom:
+                    existing = cell.border
+                    cell.border = Border(
+                        left=left or existing.left,
+                        right=right or existing.right,
+                        top=top or existing.top,
+                        bottom=bottom or existing.bottom
+                    )
+        
+        # Add "Don't Care" text if needed
+        if label == "Sequence mode":
+            mid_col = (start_col + end_col) // 2
+            text_cell = self.ws.cell(row=row, column=self.signal_start_col + mid_col, value="Don't Care")
+            text_cell.font = Font(name='Arial', size=8, italic=True)
+            text_cell.alignment = Alignment(horizontal='center', vertical='center')
+    
+    def add_wakeup_sleep_boxes(self, row, label):
+        """Add wake up/sleep command boxes"""
+        # Main label
+        self.ws.merge_cells(
+            start_row=row, start_column=self.label_col_start,
+            end_row=row + 1, end_column=self.label_col_start + 1
+        )
+        label_cell = self.ws.cell(row=row, column=self.label_col_start, value=label)
+        label_cell.font = Font(name='Arial', size=9)
+        label_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        
+        # Sub-labels
+        self.ws.cell(row=row, column=self.label_col_start + 2, value="WAKEUP")
+        self.ws.cell(row=row + 1, column=self.label_col_start + 2, value="SLEEP")
+        
+        # Draw boxes for WAKEUP
+        for c in range(10, 30):
+            cell = self.ws.cell(row=row, column=self.signal_start_col + c)
+            cell.border = self.signal_border
+            cell.fill = self.colors['high']
+        
+        # Draw boxes for SLEEP  
+        for c in range(0, 10):
+            cell = self.ws.cell(row=row + 1, column=self.signal_start_col + c)
+            cell.border = self.signal_border
+            cell.fill = self.colors['low']
+        for c in range(30, 40):
+            cell = self.ws.cell(row=row + 1, column=self.signal_start_col + c)
+            cell.border = self.signal_border
+            cell.fill = self.colors['low']
+    
+    def add_timing_annotation(self, row, start, end, text):
+        """Add timing annotation with arrows"""
+        # Add the text
+        mid = (start + end) // 2
+        cell = self.ws.cell(row=row, column=self.signal_start_col + mid, value=text)
+        cell.font = Font(name='Arial', size=8, italic=True)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        # Draw horizontal line with markers
+        for c in range(start, end + 1):
+            cell = self.ws.cell(row=row, column=self.signal_start_col + c)
+            if c == start or c == end:
+                # Add vertical markers at ends
+                cell.border = Border(top=Side(style='thin'), left=Side(style='thin') if c == start else None,
+                                   right=Side(style='thin') if c == end else None)
+    
+    def add_on_off_signals(self, row, label):
+        """Add ON/OFF signal pairs"""
+        # Label
+        self.ws.cell(row=row, column=self.label_col_start, value=label)
+        
+        # ON/OFF labels
+        self.ws.cell(row=row, column=self.label_col_start + 2, value="ON")
+        self.ws.cell(row=row + 1, column=self.label_col_start + 2, value="OFF")
+        
+        # Signal patterns - customize based on the specific signal
+        # This is a simplified example
+        for c in range(5, 25):
+            on_cell = self.ws.cell(row=row, column=self.signal_start_col + c)
+            off_cell = self.ws.cell(row=row + 1, column=self.signal_start_col + c)
+            
+            on_cell.border = self.signal_border
+            off_cell.border = self.signal_border
+            
+            if c < 15:
+                on_cell.fill = self.colors['low']
+                off_cell.fill = self.colors['high']
+            else:
+                on_cell.fill = self.colors['high']
+                off_cell.fill = self.colors['low']
+    
+    def create_exact_diagram(self):
+        """Create the exact diagram from the image"""
+        self.setup_grid()
+        
+        # Add MEASUREMENT header box
+        self.add_measurement_section(self.first_signal_row)
+        
+        current_row = self.first_signal_row + 2
+        
+        # 5Y5 State with multiple boxes
+        states = [
+            (0, 4, "POSTRUN1"),
+            (4, 4, ""),
+            (8, 3, "POSTRUN1"),
+            (12, 5, "POSTRUN1"),
+            (18, 5, "POWERLATCH"),
+            (24, 4, ""),
+            (28, 5, "POSTRUN1"),
+            (34, 6, "POSTRUN2"),
+            (40, 5, "POWER OFF")
+        ]
+        self.add_state_boxes(current_row, "5Y5 State", states)
+        current_row += 4
+        
+        # Add more state boxes with proper configuration
+        more_states = [
+            (2, 3, "POWER OFF"),
+            (5, 3, ""),
+            (8, 4, "START UP MODE"),
+            (12, 4, ""),
+            (16, 5, "RUN MODE"),
+            (22, 6, ""),
+            (28, 5, "POWERLATCH"),
+            (34, 6, ""),
+            (40, 5, "POWER OFF")
+        ]
+        self.add_state_boxes(current_row, "", more_states)
+        current_row += 4
+        
+        # Sequence mode
+        self.add_continuous_box(current_row, "Sequence mode", 3, 38)
+        current_row += 2
+        
+        # CAN/LIN Wakeup
+        self.add_continuous_box(current_row, "CAN/LIN Wakeup", 8, 30, height=2)
+        current_row += 3
+        
+        # Timing annotation
+        self.add_timing_annotation(current_row, 10, 15, "200 ms")
+        current_row += 2
+        
+        # Wake up sleep command
+        self.add_wakeup_sleep_boxes(current_row, "Wake up sleep\ncommand\n(BCM->each ECU)")
+        current_row += 3
+        
+        # Control plot
+        self.ws.cell(row=current_row, column=self.label_col_start, value="Control plot")
+        self.ws.cell(row=current_row + 1, column=self.label_col_start + 2, value="5V")
+        self.ws.cell(row=current_row + 2, column=self.label_col_start + 2, value="-12V")
+        current_row += 4
+        
+        # Change Refuse to sleep
+        self.ws.cell(row=current_row, column=self.label_col_start, value="Change Refuse to")
+        self.ws.cell(row=current_row + 1, column=self.label_col_start, value="sleep")
+        self.ws.cell(row=current_row, column=self.label_col_start + 2, value="REFUSE TO SLEEP")
+        self.ws.cell(row=current_row + 1, column=self.label_col_start + 2, value="SLEEP")
+        current_row += 3
+        
+        # Initial Job 10ms
+        self.add_on_off_signals(current_row, "Initial Job 10ms")
+        current_row += 3
+        
+        # AVCC signals
+        for i in range(1, 4):
+            self.add_on_off_signals(current_row, f"AVCC {i}")
+            current_row += 3
+        
+        # Apply the main border around everything
+        self.apply_main_border()
+    
+    def apply_main_border(self):
+        """Apply the thick border around the entire diagram"""
+        # Find the bounds
+        start_row = self.first_signal_row
+        end_row = 35  # Adjust based on content
+        start_col = self.label_col_start
+        end_col = self.signal_start_col + self.time_cols - 1
+        
+        # Top and bottom borders
+        for col in range(start_col, end_col + 1):
+            self.ws.cell(row=start_row, column=col).border = Border(
+                top=self.thick_solid,
+                bottom=self.ws.cell(row=start_row, column=col).border.bottom,
+                left=self.thick_solid if col == start_col else self.ws.cell(row=start_row, column=col).border.left,
+                right=self.thick_solid if col == end_col else self.ws.cell(row=start_row, column=col).border.right
+            )
+            self.ws.cell(row=end_row, column=col).border = Border(
+                bottom=self.thick_solid,
+                top=self.ws.cell(row=end_row, column=col).border.top,
+                left=self.thick_solid if col == start_col else self.ws.cell(row=end_row, column=col).border.left,
+                right=self.thick_solid if col == end_col else self.ws.cell(row=end_row, column=col).border.right
+            )
+        
+        # Left and right borders
+        for row in range(start_row, end_row + 1):
+            self.ws.cell(row=row, column=start_col).border = Border(
+                left=self.thick_solid,
+                right=self.ws.cell(row=row, column=start_col).border.right,
+                top=self.thick_solid if row == start_row else self.ws.cell(row=row, column=start_col).border.top,
+                bottom=self.thick_solid if row == end_row else self.ws.cell(row=row, column=start_col).border.bottom
+            )
+            self.ws.cell(row=row, column=end_col).border = Border(
+                right=self.thick_solid,
+                left=self.ws.cell(row=row, column=end_col).border.left,
+                top=self.thick_solid if row == start_row else self.ws.cell(row=row, column=end_col).border.top,
+                bottom=self.thick_solid if row == end_row else self.ws.cell(row=row, column=end_col).border.bottom
+            )
+    
+    def save(self, filename="exact_timing_diagram.xlsx"):
+        """Save the Excel file"""
+        self.create_exact_diagram()
+        
+        # Set print area and other settings
+        self.ws.sheet_view.showGridLines = False
+        self.ws.page_setup.orientation = 'landscape'
+        
+        # Save
+        self.wb.save(filename)
+        print(f"✓ Exact timing diagram saved to: {filename}")
+        return filename
+
+
+# Simple input method for creating custom timing
+def create_from_simple_format():
+    """
+    Create timing diagram using simple text format
+    Each signal is defined as: "SignalName:Pattern"
+    """
+    
+    timing_data = """
+    # Format: SignalName:Type:Pattern
+    # Types: STATE, DIGITAL, BOX, TIMING
+    
+    5Y5 State:STATE:POWER_OFF(5) START_UP(3) RUN_MODE(8) POWERLATCH(5) POSTRUN1(4) POSTRUN2(4) POWER_OFF(6)
+    
+    Sequence mode:BOX:3-38:Don't Care
+    
+    CAN/LIN Wakeup:BOX:8-30:
+    
+    Wake up sleep:DUAL:WAKEUP(10-30) SLEEP(0-10,30-40)
+    
+    Control plot:LEVELS:5V,-12V
+    
+    Initial Job:ON_OFF:OFF(0-10) ON(10-15) OFF(15-40)
+    
+    AVCC 1:ON_OFF:OFF(0-12) ON(12-32) OFF(32-40)
+    AVCC 2:ON_OFF:OFF(0-14) ON(14-34) OFF(34-40)
+    AVCC 3:ON_OFF:OFF(0-16) ON(16-36) OFF(36-40)
+    
+    TIMING:10-15:200 ms
+    """
+    
+    # Parse and create diagram
+    diagram = ExactTimingDiagram()
+    
+    # Parse the timing_data string and generate the diagram
+    # (Implementation would go here)
+    
+    return diagram
+
+
+# Main execution
+if __name__ == "__main__":
+    print("\n" + "="*60)
+    print("ECU TIMING DIAGRAM - EXACT IMAGE FORMAT")
+    print("="*60)
+    
+    # Create exact diagram
+    diagram = ExactTimingDiagram()
+    output_file = diagram.save("ecu_exact_format.xlsx")
+    
+    print("\n✓ Diagram created with exact image formatting:")
+    print(f"  - Thick outer border box")
+    print(f"  - Dotted vertical grid lines")
+    print(f"  - State boxes with labels")
+    print(f"  - Proper merged cells")
+    print(f"  - ON/OFF signal pairs")
+    print(f"  - Timing annotations")
+    print(f"\n📁 Output: {output_file}")
+    print("="*60)
