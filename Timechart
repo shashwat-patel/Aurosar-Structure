@@ -1,397 +1,1033 @@
 #!/usr/bin/env python3
 """
-SIMPLIFIED ECU Timing Diagram Generator for Excel
-Just write simple text patterns - the script does everything else!
+Enhanced Multi-Signal ECU Timing Diagram Generator
+Supports digital, analog, PWM, and state machine signals with advanced visualization
 """
 
 import openpyxl
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill, Border, Side, Alignment, Font
 from openpyxl.utils import get_column_letter
+from openpyxl.chart import LineChart, Reference
+from openpyxl.chart.axis import NumericAxis
+from openpyxl.formatting.rule import DataBarRule, ColorScaleRule
+import os
+import re
+import math
+from typing import Dict, List, Tuple, Optional
 
-class SimpleTimingDiagram:
-    """Super simple timing diagram generator"""
-    
+class EnhancedTimingGenerator:
+    """Enhanced timing diagram generator with analog and PWM support"""
+
     def __init__(self):
         self.wb = Workbook()
-        self.ws = self.wb.active
-        self.ws.title = "Timing"
+        self.ws = None
+        self.sections = []
+        self.current_section_idx = -1
+        self.signal_types = {}
+        self.analog_data = {}
+
+        # Border styles
+        self.thin = Side(style='thin', color='000000')
+        self.medium = Side(style='medium', color='000000')
+        self.thick = Side(style='thick', color='000000')
+        self.dotted = Side(style='dotted', color='808080')
+        self.dashed = Side(style='dashed', color='404040')
         
-        # Colors for different signal values
+        # Enhanced color schemes
         self.colors = {
-            '0': 'FFFFFF',  # White for LOW
-            '1': '4472C4',  # Blue for HIGH
-            '-': 'FFFFFF',  # White for don't care
-            'X': 'D9D9D9',  # Gray for undefined
-            # State colors
+            # State machine colors
             'OFF': 'FF6B6B',      # Red
             'INIT': 'FFD93D',     # Yellow  
             'RUN': '6BCF7F',      # Green
             'SLEEP': 'E8E8E8',    # Light gray
             'WAKE': 'FFE66D',     # Light yellow
-            'POST1': '95E1D3',    # Light cyan
-            'POST2': 'F38181',    # Light red
-            'LATCH': '4ECDC4',    # Cyan
-            # You can add more colors here
+            'ERROR': 'FF0000',    # Bright red
+            'ACTIVE': '00FF00',   # Bright green
+            'IDLE': 'F0E68C',     # Khaki
+            
+            # Digital signal colors
+            'HIGH': '90EE90',     # Light green
+            'LOW': 'FFE4E1',      # Misty rose
+            'X': 'DDA0DD',        # Plum (undefined)
+            'Z': 'E0FFFF',        # Light cyan (high-Z)
+            
+            # PWM gradient colors
+            'PWM_0': 'FFFFFF',    # White
+            'PWM_25': 'FFFFE0',   # Light yellow
+            'PWM_50': 'FFD700',   # Gold
+            'PWM_75': 'FFA500',   # Orange
+            'PWM_100': '00FF00',  # Green
+            
+            # Analog range colors
+            'ANALOG_LOW': 'E0FFE0',      # Very light green
+            'ANALOG_NORMAL': 'FFFFE0',   # Light yellow
+            'ANALOG_HIGH': 'FFE0E0',     # Light red
+            'ANALOG_CRITICAL': 'FF6B6B',  # Red
         }
+
+        self.time_units = 50
+        self.time_scale = 20  # ms per unit
+
+    def detect_signal_type(self, name: str, pattern: str) -> str:
+        """Automatically detect signal type from name and pattern"""
+        name_lower = name.lower()
         
-        self.current_row = 3
-        self.time_units = 50  # Total time units to show
+        # Check by name patterns
+        if any(x in name_lower for x in ['pwm', 'duty', 'pulse']):
+            return 'PWM'
+        elif any(x in name_lower for x in ['voltage', 'volt', 'v(', 'vdd', 'vcc', 'v_']):
+            return 'ANALOG_VOLTAGE'
+        elif any(x in name_lower for x in ['current', 'amp', 'ma', 'a(', 'i_']):
+            return 'ANALOG_CURRENT'
+        elif any(x in name_lower for x in ['temp', 'temperature', 'deg']):
+            return 'ANALOG_TEMP'
+        elif any(x in name_lower for x in ['state', 'mode', 'fsm']):
+            return 'STATE'
+        elif any(x in name_lower for x in ['clk', 'clock', 'sck']):
+            return 'CLOCK'
         
-    def setup_basic_grid(self, title="Timing Diagram"):
-        """Basic setup - just title and grid"""
-        # Title
-        self.ws.merge_cells(f'B1:AZ1')
-        self.ws['B1'] = title
-        self.ws['B1'].font = Font(size=14, bold=True)
-        self.ws['B1'].alignment = Alignment(horizontal='center')
+        # Check by pattern
+        if ' ' in pattern:
+            # Space-separated values indicate states
+            return 'STATE'
+        elif '~' in pattern or '.' in pattern:
+            # Analog waveform notation
+            return 'ANALOG'
+        elif '%' in pattern:
+            return 'PWM'
+        elif all(c in '01-XxZz' for c in pattern):
+            return 'DIGITAL'
+        elif any(c.isdigit() and int(c) > 1 for c in pattern if c.isdigit()):
+            return 'ANALOG'
         
+        return 'DIGITAL'  # Default
+
+    def process_file(self, filename):
+        """Process enhanced timing diagram file"""
+        if not os.path.exists(filename):
+            self.create_enhanced_example_file(filename)
+            print(f"✓ Created enhanced example file: {filename}")
+            print("  Edit it and run again!")
+            return False
+
+        with open(filename, 'r') as f:
+            lines = f.readlines()
+
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+
+            # Enhanced command processing
+            if line.startswith('SECTION:'):
+                self.start_new_section(line[8:].strip())
+            elif line.startswith('SUBSECTION:'):
+                self.add_subsection(line[11:].strip())
+            elif line.startswith('SIGNAL:'):
+                self.add_enhanced_signal(line[7:].strip())
+            elif line.startswith('ANALOG:'):
+                self.add_analog_signal(line[7:].strip())
+            elif line.startswith('PWM:'):
+                self.add_pwm_signal(line[4:].strip())
+            elif line.startswith('CLOCK:'):
+                self.add_clock_signal(line[6:].strip())
+            elif line.startswith('BOX:'):
+                self.add_box_signal(line[4:].strip())
+            elif line.startswith('TIMING:'):
+                self.add_timing(line[7:].strip())
+            elif line.startswith('TRANSITION:'):
+                self.add_transition_marker(line[11:].strip())
+            elif line.startswith('SPACE'):
+                self.add_space()
+            elif ':' in line and not line.startswith('//'):
+                # Auto-detect signal type
+                parts = line.split(':', 1)
+                name = parts[0].strip()
+                pattern = parts[1].strip()
+                signal_type = self.detect_signal_type(name, pattern)
+                
+                if signal_type == 'ANALOG' or signal_type.startswith('ANALOG_'):
+                    self.add_analog_signal(line)
+                elif signal_type == 'PWM':
+                    self.add_pwm_signal(line)
+                elif signal_type == 'CLOCK':
+                    self.add_clock_signal(line)
+                else:
+                    self.add_enhanced_signal(line)
+
+        return True
+
+    def start_new_section(self, section_info):
+        """Start a new main section with enhanced formatting"""
+        parts = section_info.split(',')
+        section_name = parts[0].strip()
+        sheet_name = parts[1].strip() if len(parts) > 1 else section_name[:31]
+
+        # Create new sheet or use existing
+        if self.current_section_idx == -1:
+            self.ws = self.wb.active
+            self.ws.title = sheet_name
+        else:
+            self.ws = self.wb.create_sheet(sheet_name)
+
+        self.current_section_idx += 1
+
+        section = {
+            'name': section_name,
+            'sheet': self.ws,
+            'current_row': 6,
+            'first_signal_row': 6,
+            'last_signal_row': 6,
+            'analog_charts': []
+        }
+        self.sections.append(section)
+
+        # Enhanced section header
+        self.ws.merge_cells('B2:AZ2')
+        self.ws['B2'] = section_name.upper()
+        self.ws['B2'].font = Font(size=14, bold=True, color='FFFFFF')
+        self.ws['B2'].fill = PatternFill(start_color='2C3E50', end_color='2C3E50', fill_type='solid')
+        self.ws['B2'].alignment = Alignment(horizontal='center', vertical='center')
+
         # Column widths
-        self.ws.column_dimensions['B'].width = 25  # Signal names
-        for i in range(3, 53):  # 50 time columns
+        self.ws.column_dimensions['A'].width = 3
+        self.ws.column_dimensions['B'].width = 25
+        for i in range(3, 53):
             self.ws.column_dimensions[get_column_letter(i)].width = 2.5
-            
-        # Time header (every 5 units = 100ms)
+
+        # Enhanced time header with units
+        self.ws['B4'] = "Time (ms) →"
+        self.ws['B4'].font = Font(size=10, bold=True, italic=True)
+        
         for i in range(0, self.time_units, 5):
-            cell = self.ws.cell(row=2, column=3+i, value=f"{i*20}ms")
+            cell = self.ws.cell(row=4, column=3+i, value=f"{i*self.time_scale}")
             cell.font = Font(size=9, italic=True)
-            
-    def add(self, signal_name, pattern):
-        """
-        SUPER SIMPLE: Just give signal name and pattern!
-        
-        Examples:
-            add("Power", "0000011111111111111111111111111110000000")
-            add("Clock", "0101010101010101010101010101010101010101")
-            add("State", "OFF OFF OFF INIT INIT RUN RUN RUN RUN SLEEP")
-            add("CAN", "0000----1111----0000----1111----00000000")
-        """
-        row = self.current_row
-        self.current_row += 1
-        
-        # Add signal name
-        self.ws.cell(row=row, column=2, value=signal_name)
+            cell.fill = PatternFill(start_color='F0F0F0', end_color='F0F0F0', fill_type='solid')
+
+        # Add grid lines with different styles
+        for i in range(0, self.time_units):
+            if i % 10 == 0:
+                # Major grid line every 200ms
+                for row in range(5, 50):
+                    cell = self.ws.cell(row=row, column=3+i)
+                    cell.border = Border(left=self.medium)
+            elif i % 5 == 0:
+                # Minor grid line every 100ms
+                for row in range(5, 50):
+                    cell = self.ws.cell(row=row, column=3+i)
+                    cell.border = Border(left=self.dotted)
+
+    def add_enhanced_signal(self, signal_info):
+        """Add enhanced digital or state signal with edge detection"""
+        if self.current_section_idx < 0:
+            return
+
+        parts = signal_info.split(':', 1)
+        if len(parts) != 2:
+            return
+
+        name = parts[0].strip()
+        pattern = parts[1].strip()
+
+        section = self.sections[self.current_section_idx]
+        row = section['current_row']
+        section['current_row'] += 1
+        section['last_signal_row'] = row
+
+        # Add signal name with type indicator
+        signal_type = self.detect_signal_type(name, pattern)
+        self.ws.cell(row=row, column=2, value=name)
         self.ws.cell(row=row, column=2).font = Font(size=10, bold=True)
         
-        # Handle different pattern types
+        # Add type indicator
+        type_cell = self.ws.cell(row=row, column=1, value=signal_type[0])
+        type_cell.font = Font(size=8, italic=True, color='808080')
+
+        # Handle pattern based on type
         if ' ' in pattern:
-            # State pattern (words separated by spaces)
-            self._add_states(row, pattern.split())
+            self._add_enhanced_states(row, pattern.split())
         else:
-            # Digital pattern (string of 0,1,-,X)
-            self._add_digital(row, pattern)
-            
-        # Set row height
-        self.ws.row_dimensions[row].height = 20
+            self._add_enhanced_digital(row, pattern)
+
+        self.ws.row_dimensions[row].height = 22
+
+    def add_analog_signal(self, signal_info):
+        """Add analog signal with graphical representation"""
+        if self.current_section_idx < 0:
+            return
+
+        parts = signal_info.split(':', 1)
+        if len(parts) != 2:
+            return
+
+        name = parts[0].strip()
+        values_str = parts[1].strip()
+
+        section = self.sections[self.current_section_idx]
+        start_row = section['current_row']
         
-    def _add_digital(self, row, pattern):
-        """Add digital signal from pattern string"""
+        # Reserve 3 rows for analog signal (name, graph, scale)
+        section['current_row'] += 3
+        section['last_signal_row'] = section['current_row'] - 1
+
+        # Add signal name
+        self.ws.cell(row=start_row, column=2, value=name)
+        self.ws.cell(row=start_row, column=2).font = Font(size=10, bold=True)
+        self.ws.cell(row=start_row, column=1, value='A')
+        
+        # Parse analog values
+        values = self._parse_analog_values(values_str)
+        
+        if not values:
+            return
+            
+        min_val = min(values)
+        max_val = max(values)
+        range_val = max_val - min_val if max_val != min_val else 1
+        
+        # Draw analog waveform
+        for i, val in enumerate(values):
+            if i >= self.time_units:
+                break
+                
+            # Calculate row position (3 rows for display)
+            normalized = (val - min_val) / range_val
+            row_offset = int(normalized * 2)  # 0, 1, or 2
+            display_row = start_row + 2 - row_offset
+            
+            cell = self.ws.cell(row=display_row, column=3+i)
+            
+            # Color based on value range
+            if val < min_val + range_val * 0.25:
+                color = self.colors['ANALOG_LOW']
+            elif val < min_val + range_val * 0.5:
+                color = self.colors['ANALOG_NORMAL']
+            elif val < min_val + range_val * 0.75:
+                color = self.colors['ANALOG_HIGH']
+            else:
+                color = self.colors['ANALOG_CRITICAL']
+                
+            cell.fill = PatternFill(start_color=color, end_color=color, fill_type='solid')
+            
+            # Add value markers at key points
+            if i % 10 == 0:
+                cell.value = f"{val:.1f}"
+                cell.font = Font(size=7)
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        # Add scale indicators
+        self.ws.cell(row=start_row, column=53, value=f"Max: {max_val:.1f}")
+        self.ws.cell(row=start_row+2, column=53, value=f"Min: {min_val:.1f}")
+        
+        for row_idx in range(3):
+            self.ws.row_dimensions[start_row + row_idx].height = 18
+
+    def add_pwm_signal(self, signal_info):
+        """Add PWM signal with duty cycle visualization"""
+        if self.current_section_idx < 0:
+            return
+
+        parts = signal_info.split(':', 1)
+        if len(parts) != 2:
+            return
+
+        name = parts[0].strip()
+        pattern = parts[1].strip()
+
+        section = self.sections[self.current_section_idx]
+        row = section['current_row']
+        section['current_row'] += 1
+        section['last_signal_row'] = row
+
+        # Add signal name
+        self.ws.cell(row=row, column=2, value=name)
+        self.ws.cell(row=row, column=2).font = Font(size=10, bold=True)
+        self.ws.cell(row=row, column=1, value='P')
+
+        # Parse PWM duty cycles
+        duty_cycles = self._parse_pwm_pattern(pattern)
+        
+        for i, duty in enumerate(duty_cycles):
+            if i >= self.time_units:
+                break
+                
+            cell = self.ws.cell(row=row, column=3+i)
+            
+            # Color based on duty cycle
+            if duty == 0:
+                color = self.colors['PWM_0']
+            elif duty <= 25:
+                color = self.colors['PWM_25']
+            elif duty <= 50:
+                color = self.colors['PWM_50']
+            elif duty <= 75:
+                color = self.colors['PWM_75']
+            else:
+                color = self.colors['PWM_100']
+                
+            cell.fill = PatternFill(start_color=color, end_color=color, fill_type='solid')
+            
+            # Add duty cycle value every 5 units
+            if i % 5 == 0 and duty > 0:
+                cell.value = f"{duty}%"
+                cell.font = Font(size=7)
+                cell.alignment = Alignment(horizontal='center', vertical='center', 
+                                        text_rotation=90)
+        
+        self.ws.row_dimensions[row].height = 25
+
+    def add_clock_signal(self, signal_info):
+        """Add clock signal with automatic toggle visualization"""
+        if self.current_section_idx < 0:
+            return
+
+        parts = signal_info.split(':', 1)
+        if len(parts) != 2:
+            return
+
+        name = parts[0].strip()
+        freq_or_pattern = parts[1].strip()
+
+        section = self.sections[self.current_section_idx]
+        row = section['current_row']
+        section['current_row'] += 1
+        section['last_signal_row'] = row
+
+        # Add signal name
+        self.ws.cell(row=row, column=2, value=name)
+        self.ws.cell(row=row, column=2).font = Font(size=10, bold=True)
+        self.ws.cell(row=row, column=1, value='C')
+
+        # Generate clock pattern
+        if freq_or_pattern.isdigit() or 'khz' in freq_or_pattern.lower():
+            # Generate from frequency
+            pattern = self._generate_clock_pattern(freq_or_pattern)
+        else:
+            pattern = freq_or_pattern
+
+        self._add_clock_visualization(row, pattern)
+        self.ws.row_dimensions[row].height = 20
+
+    def add_transition_marker(self, transition_info):
+        """Add transition markers for signal changes"""
+        if self.current_section_idx < 0:
+            return
+            
+        parts = transition_info.split(':')
+        if len(parts) < 3:
+            return
+            
+        signal_row = int(parts[0].strip())
+        position = int(parts[1].strip())
+        edge_type = parts[2].strip()  # RISE, FALL, or CHANGE
+        
+        section = self.sections[self.current_section_idx]
+        actual_row = section['first_signal_row'] + signal_row - 1
+        
+        cell = self.ws.cell(row=actual_row, column=3+position)
+        
+        if edge_type.upper() == 'RISE':
+            # Rising edge - thick green left border
+            cell.border = Border(left=Side(style='thick', color='00FF00'))
+        elif edge_type.upper() == 'FALL':
+            # Falling edge - thick red left border  
+            cell.border = Border(left=Side(style='thick', color='FF0000'))
+        else:
+            # Generic change - thick blue left border
+            cell.border = Border(left=Side(style='thick', color='0000FF'))
+
+    def _add_enhanced_digital(self, row, pattern):
+        """Add digital signal with enhanced edge detection and visualization"""
+        prev_val = '0'
+        
         for i, char in enumerate(pattern):
             if i >= self.time_units:
                 break
+
             cell = self.ws.cell(row=row, column=3+i)
-            
-            # Set color based on character
-            color = self.colors.get(char, 'FFFFFF')
-            cell.fill = PatternFill(start_color=color, end_color=color, fill_type='solid')
-            
-            # Add border
-            cell.border = Border(
-                left=Side(style='thin'),
-                right=Side(style='thin'),
-                top=Side(style='thin'),
-                bottom=Side(style='thin')
-            )
-    
-    def _add_states(self, row, states):
-        """Add state machine signal from list of states"""
+            curr_val = char.upper()
+
+            # Handle different digital values
+            if curr_val in ['0', 'L']:
+                cell.fill = PatternFill(start_color=self.colors['LOW'], 
+                                       end_color=self.colors['LOW'], fill_type='solid')
+                cell.border = Border(bottom=self.thin)
+                
+            elif curr_val in ['1', 'H']:
+                cell.fill = PatternFill(start_color=self.colors['HIGH'], 
+                                       end_color=self.colors['HIGH'], fill_type='solid')
+                cell.border = Border(top=self.thin)
+                
+            elif curr_val == 'X':
+                cell.fill = PatternFill(start_color=self.colors['X'], 
+                                       end_color=self.colors['X'], fill_type='solid')
+                cell.border = Border(top=self.dotted, bottom=self.dotted)
+                cell.value = 'X'
+                cell.font = Font(size=7, italic=True)
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                
+            elif curr_val == 'Z':
+                cell.fill = PatternFill(start_color=self.colors['Z'], 
+                                       end_color=self.colors['Z'], fill_type='solid')
+                cell.border = Border(top=self.dashed, bottom=self.dashed)
+                cell.value = 'Z'
+                cell.font = Font(size=7, italic=True)
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+
+            # Detect and mark transitions
+            if i > 0:
+                prev_val = pattern[i-1].upper() if i > 0 else '0'
+                
+                # Rising edge
+                if prev_val in ['0', 'L'] and curr_val in ['1', 'H']:
+                    cell.border = Border(left=Side(style='medium', color='00FF00'),
+                                       top=self.thin)
+                    
+                # Falling edge
+                elif prev_val in ['1', 'H'] and curr_val in ['0', 'L']:
+                    prev_cell = self.ws.cell(row=row, column=3+i-1)
+                    prev_cell.border = Border(right=Side(style='medium', color='FF0000'),
+                                            top=prev_cell.border.top if prev_cell.border else None)
+                    cell.border = Border(bottom=self.thin)
+
+    def _add_enhanced_states(self, row, states):
+        """Add state machine signal with enhanced visualization"""
         current_state = states[0]
         start_col = 0
         
-        for i, state in enumerate(states + ['END']):  # Add END to trigger last state
+        state_colors = {
+            'OFF': 'FF6B6B',
+            'INIT': 'FFD93D',
+            'RUN': '6BCF7F',
+            'ERROR': 'FF0000',
+            'IDLE': 'F0E68C',
+            'ACTIVE': '00FF00'
+        }
+
+        for i, state in enumerate(states + ['END']):
             if state != current_state or i == len(states):
-                # State changed, draw the previous state
-                end_col = i - 1
-                
-                # Merge cells for this state
+                end_col = min(i - 1, self.time_units - 1)
+
                 if end_col >= start_col:
-                    if end_col == start_col:
-                        # Single cell
-                        cell = self.ws.cell(row=row, column=3+start_col)
-                    else:
-                        # Merge multiple cells
+                    # Merge cells for state display
+                    if end_col > start_col:
                         self.ws.merge_cells(
                             start_row=row, start_column=3+start_col,
                             end_row=row, end_column=3+end_col
                         )
-                        cell = self.ws.cell(row=row, column=3+start_col)
-                    
-                    # Set state text and color
+
+                    cell = self.ws.cell(row=row, column=3+start_col)
                     cell.value = current_state
                     cell.alignment = Alignment(horizontal='center', vertical='center')
                     cell.font = Font(size=9, bold=True)
-                    
+
                     # Apply color
-                    color = self.colors.get(current_state, 'FFFFFF')
-                    cell.fill = PatternFill(start_color=color, end_color=color, fill_type='solid')
-                    
-                    # Add borders
+                    color = state_colors.get(current_state.upper(), 
+                                            self.colors.get(current_state.upper(), 'FFFFFF'))
+                    cell.fill = PatternFill(start_color=color, end_color=color, 
+                                          fill_type='solid')
+
+                    # Apply borders
                     for col in range(3+start_col, 3+end_col+1):
                         c = self.ws.cell(row=row, column=col)
                         c.border = Border(
-                            left=Side(style='thin'),
-                            right=Side(style='thin'),
-                            top=Side(style='thin'),
-                            bottom=Side(style='thin')
+                            left=self.medium if col == 3+start_col else None,
+                            right=self.medium if col == 3+end_col else None,
+                            top=self.thin,
+                            bottom=self.thin
                         )
-                
-                # Update for next state
+
                 current_state = state
                 start_col = i
-    
-    def space(self):
-        """Add empty row for spacing"""
-        self.current_row += 1
+
+    def _add_clock_visualization(self, row, pattern):
+        """Add clock signal with clear high/low visualization"""
+        for i, char in enumerate(pattern):
+            if i >= self.time_units:
+                break
+                
+            cell = self.ws.cell(row=row, column=3+i)
+            
+            if char == '1':
+                # Clock high
+                cell.fill = PatternFill(start_color='FFD700', end_color='FFD700', 
+                                       fill_type='solid')
+                cell.border = Border(top=self.thin)
+            else:
+                # Clock low
+                cell.fill = PatternFill(start_color='F0F0F0', end_color='F0F0F0', 
+                                       fill_type='solid')
+                cell.border = Border(bottom=self.thin)
+                
+            # Mark transitions
+            if i > 0 and pattern[i] != pattern[i-1]:
+                if pattern[i] == '1':
+                    # Rising edge
+                    cell.border = Border(left=self.thin, top=self.thin)
+                else:
+                    # Falling edge
+                    prev_cell = self.ws.cell(row=row, column=3+i-1)
+                    prev_cell.border = Border(right=self.thin, 
+                                            top=prev_cell.border.top if prev_cell.border else None)
+
+    def _parse_analog_values(self, values_str: str) -> List[float]:
+        """Parse analog values from various formats"""
+        values = []
         
-    def section(self, title):
-        """Add section header"""
-        row = self.current_row
-        self.current_row += 1
+        # Handle different formats
+        if ',' in values_str:
+            # Comma-separated values
+            parts = values_str.split(',')
+            for part in parts:
+                try:
+                    val = float(re.sub(r'[^\d.-]', '', part))
+                    values.append(val)
+                except:
+                    values.append(0)
+                    
+        elif '~' in values_str:
+            # Waveform notation (e.g., "0~5~10~5~0")
+            parts = values_str.split('~')
+            for part in parts:
+                try:
+                    val = float(part)
+                    values.append(val)
+                except:
+                    values.append(0)
+                    
+        else:
+            # Single character values
+            for char in values_str:
+                if char.isdigit():
+                    values.append(float(char))
+                elif char == '-':
+                    values.append(0)
+                    
+        # Interpolate if needed to fill time units
+        if len(values) < self.time_units:
+            # Simple linear interpolation
+            factor = self.time_units / len(values)
+            interpolated = []
+            for i in range(self.time_units):
+                idx = int(i / factor)
+                if idx < len(values):
+                    interpolated.append(values[idx])
+                else:
+                    interpolated.append(values[-1])
+            values = interpolated
+            
+        return values[:self.time_units]
+
+    def _parse_pwm_pattern(self, pattern: str) -> List[int]:
+        """Parse PWM duty cycle pattern"""
+        duty_cycles = []
         
+        if ',' in pattern:
+            # Comma-separated duty cycles
+            parts = pattern.split(',')
+            for part in parts:
+                try:
+                    val = int(re.sub(r'[^\d]', '', part))
+                    duty_cycles.append(min(100, max(0, val)))
+                except:
+                    duty_cycles.append(0)
+        else:
+            # Pattern-based (0-9 maps to 0-90%)
+            for char in pattern:
+                if char.isdigit():
+                    duty_cycles.append(int(char) * 10)
+                else:
+                    duty_cycles.append(0)
+                    
+        # Extend pattern if needed
+        while len(duty_cycles) < self.time_units:
+            duty_cycles.extend(duty_cycles[:self.time_units - len(duty_cycles)])
+            
+        return duty_cycles[:self.time_units]
+
+    def _generate_clock_pattern(self, freq_str: str) -> str:
+        """Generate clock pattern from frequency"""
+        # Parse frequency
+        freq = 1.0  # Default 1 Hz
+        
+        if 'khz' in freq_str.lower():
+            freq = float(re.sub(r'[^\d.]', '', freq_str)) * 1000
+        elif 'mhz' in freq_str.lower():
+            freq = float(re.sub(r'[^\d.]', '', freq_str)) * 1000000
+        elif 'hz' in freq_str.lower():
+            freq = float(re.sub(r'[^\d.]', '', freq_str))
+        else:
+            try:
+                freq = float(freq_str)
+            except:
+                freq = 1.0
+                
+        # Calculate period in time units
+        period_ms = 1000 / freq
+        period_units = max(1, int(period_ms / self.time_scale))
+        
+        # Generate pattern
+        pattern = ''
+        for i in range(self.time_units):
+            if (i // (period_units // 2)) % 2 == 0:
+                pattern += '1'
+            else:
+                pattern += '0'
+                
+        return pattern
+
+    def add_subsection(self, title):
+        """Add enhanced subsection header"""
+        if self.current_section_idx < 0:
+            return
+
+        section = self.sections[self.current_section_idx]
+        row = section['current_row']
+        section['current_row'] += 1
+
         self.ws.merge_cells(f'B{row}:D{row}')
         cell = self.ws.cell(row=row, column=2, value=title)
-        cell.font = Font(size=11, bold=True)
-        cell.fill = PatternFill(start_color='D9D9D9', end_color='D9D9D9', fill_type='solid')
-        cell.border = Border(
-            left=Side(style='medium'),
-            right=Side(style='medium'),
-            top=Side(style='medium'),
-            bottom=Side(style='medium')
-        )
-        
-    def timing_mark(self, start_time, end_time, label):
-        """Add timing annotation (like "200ms")"""
-        row = self.current_row
-        self.current_row += 1
-        
-        # Add label at midpoint
-        mid = (start_time + end_time) // 2
-        cell = self.ws.cell(row=row, column=3+mid, value=label)
-        cell.font = Font(size=9, italic=True, color='FF0000')
-        cell.alignment = Alignment(horizontal='center')
-        
-        # Draw line
-        for i in range(start_time, end_time + 1):
+        cell.font = Font(size=11, bold=True, color='FFFFFF')
+        cell.fill = PatternFill(start_color='34495E', end_color='34495E', fill_type='solid')
+        cell.border = Border(left=self.medium, right=self.medium, 
+                           top=self.medium, bottom=self.medium)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    def add_box_signal(self, box_info):
+        """Add box signal with enhanced visualization"""
+        if self.current_section_idx < 0:
+            return
+
+        parts = box_info.split(':')
+        if len(parts) < 3:
+            return
+
+        name = parts[0].strip()
+        start = int(parts[1].strip())
+        end = int(parts[2].strip())
+        label = parts[3].strip() if len(parts) > 3 else ""
+        color = parts[4].strip() if len(parts) > 4 else "E0E0E0"
+
+        section = self.sections[self.current_section_idx]
+        row = section['current_row']
+        section['current_row'] += 1
+        section['last_signal_row'] = row
+
+        self.ws.cell(row=row, column=2, value=name)
+        self.ws.cell(row=row, column=2).font = Font(size=10, bold=True)
+
+        # Fill box area
+        for i in range(start, end + 1):
             cell = self.ws.cell(row=row, column=3+i)
-            if i == start_time or i == end_time:
-                cell.border = Border(top=Side(style='medium', color='FF0000'))
+            cell.fill = PatternFill(start_color=color, end_color=color, fill_type='solid')
+            cell.border = Border(
+                left=self.medium if i == start else None,
+                right=self.medium if i == end else None,
+                top=self.medium,
+                bottom=self.medium
+            )
+
+        if label:
+            mid = (start + end) // 2
+            cell = self.ws.cell(row=row, column=3+mid, value=label)
+            cell.font = Font(size=9, bold=True)
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+
+        self.ws.row_dimensions[row].height = 22
+
+    def add_timing(self, timing_info):
+        """Add enhanced timing annotation"""
+        if self.current_section_idx < 0:
+            return
+
+        parts = timing_info.split(':')
+        if len(parts) != 3:
+            return
+
+        start = int(parts[0].strip())
+        end = int(parts[1].strip())
+        label = parts[2].strip()
+
+        section = self.sections[self.current_section_idx]
+        row = section['current_row']
+        section['current_row'] += 1
+        section['last_signal_row'] = row
+
+        # Draw timing arrow
+        for i in range(start, end + 1):
+            cell = self.ws.cell(row=row, column=3+i)
+            
+            if i == start:
+                cell.value = '→'
+                cell.border = Border(left=self.medium, top=self.thin)
+            elif i == end:
+                cell.value = '←'
+                cell.border = Border(right=self.medium, top=self.thin)
             else:
                 cell.border = Border(top=Side(style='thin', color='FF0000'))
-    
-    def save(self, filename="timing.xlsx"):
-        """Save the file"""
-        # Remove gridlines for cleaner look
-        self.ws.sheet_view.showGridLines = False
+
+        # Add label in the middle
+        mid = (start + end) // 2
+        label_cell = self.ws.cell(row=row, column=3+mid, value=label)
+        label_cell.font = Font(size=9, bold=True, color='FF0000')
+        label_cell.alignment = Alignment(horizontal='center', vertical='center')
+        label_cell.fill = PatternFill(start_color='FFFFE0', end_color='FFFFE0', fill_type='solid')
+
+    def add_space(self):
+        """Add empty row with light separator"""
+        if self.current_section_idx >= 0:
+            section = self.sections[self.current_section_idx]
+            row = section['current_row']
+            
+            # Add light gray line
+            for col in range(2, 53):
+                cell = self.ws.cell(row=row, column=col)
+                cell.fill = PatternFill(start_color='F5F5F5', end_color='F5F5F5', 
+                                       fill_type='solid')
+            
+            self.ws.row_dimensions[row].height = 5
+            section['current_row'] += 1
+
+    def finalize(self):
+        """Finalize all sections with enhanced borders and summary"""
+        for section in self.sections:
+            self.ws = section['sheet']
+
+            start_row = 2
+            end_row = section['last_signal_row']
+            start_col = 2
+            end_col = 52
+
+            # Apply main borders
+            for row in range(start_row, end_row + 1):
+                for col in range(start_col, end_col + 1):
+                    if row == start_row or row == end_row or col == start_col or col == end_col:
+                        cell = self.ws.cell(row=row, column=col)
+                        existing = cell.border
+                        cell.border = Border(
+                            left=self.thick if col == start_col else (existing.left if existing else None),
+                            right=self.thick if col == end_col else (existing.right if existing else None),
+                            top=self.thick if row == start_row else (existing.top if existing else None),
+                            bottom=self.thick if row == end_row else (existing.bottom if existing else None)
+                        )
+
+            # Add legend section
+            legend_row = end_row + 3
+            self.ws.merge_cells(f'B{legend_row}:K{legend_row}')
+            legend_cell = self.ws.cell(row=legend_row, column=2)
+            legend_cell.value = "SIGNAL LEGEND"
+            legend_cell.font = Font(size=11, bold=True)
+            legend_cell.fill = PatternFill(start_color='E0E0E0', end_color='E0E0E0', 
+                                          fill_type='solid')
+            legend_cell.alignment = Alignment(horizontal='center')
+
+            # Add legend items
+            legend_items = [
+                ('D: Digital', 'LOW/HIGH signals'),
+                ('A: Analog', 'Continuous values'),
+                ('P: PWM', 'Pulse width modulation'),
+                ('C: Clock', 'Clock signals'),
+                ('S: State', 'State machines')
+            ]
+            
+            for i, (symbol, description) in enumerate(legend_items):
+                row = legend_row + 1 + i
+                self.ws.cell(row=row, column=2, value=symbol)
+                self.ws.cell(row=row, column=2).font = Font(bold=True)
+                self.ws.cell(row=row, column=3, value=description)
+
+            self.ws.sheet_view.showGridLines = False
+            self.ws.sheet_view.zoomScale = 85
+
+    def save(self, filename):
+        """Save the enhanced workbook"""
+        self.finalize()
         self.wb.save(filename)
-        print(f"✓ Saved: {filename}")
+        print(f"✓ Saved enhanced timing diagram: {filename}")
 
+    def create_enhanced_example_file(self, filename):
+        """Create comprehensive example file with all signal types"""
+        example_content = """# Enhanced ECU Timing Diagram Configuration
+# =========================================
+# Signal Types:
+#   - Digital: 0/1, HIGH/LOW, X (undefined), Z (high-impedance)
+#   - Analog: Continuous values with graph visualization
+#   - PWM: Duty cycle visualization (0-100%)
+#   - Clock: Automatic clock generation
+#   - State: State machine visualization
+#
+# Commands:
+#   SECTION:name[,sheet_name]  - Start new section/sheet
+#   SUBSECTION:name            - Add subsection header
+#   SIGNAL:name:pattern        - Add signal (auto-detect type)
+#   ANALOG:name:values         - Add analog signal
+#   PWM:name:duty_cycles       - Add PWM signal
+#   CLOCK:name:frequency       - Add clock signal
+#   BOX:name:start:end[:label[:color]] - Add box annotation
+#   TIMING:start:end:label     - Add timing measurement
+#   TRANSITION:row:pos:type    - Mark signal transition
+#   SPACE                      - Add separator
 
-# ============================================================================
-# SUPER SIMPLE INPUT FORMAT - Just edit these strings!
-# ============================================================================
+# ============================================================
+# POWER & CONTROL SECTION
+# ============================================================
+SECTION:POWER_CONTROL,Power & Control
 
-def create_timing_from_simple_input():
-    """
-    CREATE YOUR TIMING DIAGRAM HERE!
-    Just edit the patterns below - it's that simple!
-    
-    Pattern format:
-    - Digital signals: Use 0 (low), 1 (high), - (don't care), X (undefined)
-    - State signals: Use state names separated by spaces
-    """
-    
-    # Create diagram
-    t = SimpleTimingDiagram()
-    t.setup_basic_grid("ECU Timing Diagram")
-    
-    # ===== DEFINE YOUR SIGNALS HERE =====
-    # Just copy these lines and change the patterns!
-    
-    # System signals
-    t.section("SYSTEM")
-    t.add("5Y5 State", "OFF OFF OFF OFF INIT INIT RUN RUN RUN RUN RUN RUN LATCH LATCH LATCH LATCH POST1 POST1 POST1 POST2 POST2 POST2 OFF OFF OFF")
-    t.add("Power", "00000111111111111111111111111111111111111111100000")
-    t.add("Ignition", "00000001111111111111111111111111111111111111000000")
-    t.space()
-    
-    # Communication
-    t.section("COMMUNICATION")
-    t.add("CAN Active", "00000000111111111111111111111111111111110000000000")
-    t.add("LIN Active", "00000000001111111111111111111111111111000000000000")
-    t.add("CAN Wake", "00000001111111111111111111111111111111110000000000")
-    t.space()
-    
-    # Control signals  
-    t.section("CONTROL")
-    t.add("Brake", "00000000000011111100000000000000000000000000000000")
-    t.add("Throttle", "00000000000000000011111111110000000000000000000000")
-    t.space()
-    
-    # Periodic signals
-    t.section("PERIODIC")
-    t.add("Clock", "01010101010101010101010101010101010101010101010101")
-    t.add("PWM", "11001100110011001100110011001100110011001100110011")
-    t.add("Heartbeat", "10000000100000001000000010000000100000001000000010")
-    t.space()
-    
-    # Timing marks
-    t.timing_mark(5, 10, "200ms")
-    t.timing_mark(20, 25, "100ms")
-    
-    # Save
-    t.save("my_timing_diagram.xlsx")
+SUBSECTION:Power Management
+# State machine signal
+System_State:OFF OFF OFF INIT INIT RUN RUN RUN RUN IDLE IDLE OFF OFF
 
+# Digital signals with transitions
+Battery_Enable:00001111111111111111111111111111111000000
+Ignition_SW:00000001111111111111111111111111100000000
 
-def create_from_text_file():
-    """
-    EVEN EASIER: Define your signals in a text file!
-    
-    Create a file 'signals.txt' with format:
-    SECTION:System
-    Power:00000111111111111111111111110000
-    State:OFF OFF OFF INIT RUN RUN RUN SLEEP
-    Clock:01010101010101010101010101010101
-    """
-    
-    t = SimpleTimingDiagram()
-    t.setup_basic_grid("My Timing Diagram")
-    
-    # Read from file
-    try:
-        with open('signals.txt', 'r') as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith('#'):
-                    continue  # Skip empty lines and comments
-                    
-                if line.startswith('SECTION:'):
-                    t.section(line.split(':', 1)[1])
-                elif line.startswith('SPACE'):
-                    t.space()
-                elif line.startswith('TIMING:'):
-                    parts = line.split(':')[1].split(',')
-                    t.timing_mark(int(parts[0]), int(parts[1]), parts[2])
-                elif ':' in line:
-                    name, pattern = line.split(':', 1)
-                    t.add(name, pattern)
-                    
-        t.save("timing_from_file.xlsx")
-        
-    except FileNotFoundError:
-        print("Creating example signals.txt file...")
-        with open('signals.txt', 'w') as f:
-            f.write("""# ECU Timing Signals
-# Format: SignalName:Pattern
-# Use 0/1 for digital, state names with spaces for states
+# Analog voltage signal (values in volts)
+V_Battery:0,0,0,11.5,11.8,12.0,12.2,12.4,12.6,12.8,13.0,13.2,13.4,13.6,13.8,14.0,14.2,14.4,14.4,14.4,14.2,14.0,13.8,13.6,13.4,13.2,13.0,12.8,12.6,12.4,12.2,12.0,11.8,11.6,11.4,11.2,11.0,10.8,10.6,10.4,10.2,10.0,9.8,9.6,9.4,9.2,9.0,8.8,8.6,0
 
-SECTION:Power Management
-Battery:00000111111111111111111111111111111111111000000000
-Ignition:00000000111111111111111111111111111111100000000000
-ECU_State:OFF OFF OFF OFF INIT INIT INIT RUN RUN RUN RUN RUN RUN RUN SLEEP SLEEP
+# Analog current signal (values in mA)  
+I_System:2,2,2,10,15,20,30,45,60,80,100,120,140,160,180,200,180,160,140,120,100,80,60,45,30,20,15,10,8,6,4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2
+
 SPACE
 
-SECTION:Communication  
-CAN_TX:00000000110011001100110011001100110011000000000000
-CAN_RX:00000000001100110011001100110011001100000000000000
+SUBSECTION:Motor Control
+# PWM signals with duty cycle
+PWM_Motor:0,0,0,10,20,30,40,50,60,70,80,90,100,100,100,90,80,70,60,50,40,30,20,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+
+# Clock signal (1kHz)
+CLOCK_1kHz:1kHz
+
+# Digital with undefined states
+SPI_MOSI:XXXX00110011001100110011001100110011XXXXXXX
+SPI_MISO:XXXX11001100110011001100110011001100XXXXXXX
+
 SPACE
 
-SECTION:Sensors
-Brake:00000000000011111000000000000000000000000000000000
-Throttle:00000000000000000001111111111111000000000000000000
+SUBSECTION:Communication Buses
+# CAN bus signals with high-impedance
+CAN_H:ZZZZ111100001111000011110000111100ZZZZZZZZ
+CAN_L:ZZZZ000011110000111100001111000011ZZZZZZZZ
+
+# Box annotations for protocol phases
+BOX:CAN_Init:4:8:Initialize:FFE0E0
+BOX:CAN_Active:8:35:Data Transfer:E0FFE0
+BOX:CAN_Sleep:35:45:Sleep Mode:E0E0FF
+
+# Timing measurements
+TIMING:10:20:100ms
+TIMING:25:35:100ms
+
 SPACE
 
-TIMING:5,10,Boot:200ms
-TIMING:20,30,Active:500ms
-""")
-        print("✓ Created signals.txt - Edit it and run again!")
+# ============================================================
+# DIAGNOSTICS SECTION (New Sheet)
+# ============================================================
+SECTION:DIAGNOSTICS,Diagnostics
+
+SUBSECTION:Test Sequence
+Test_State:IDLE IDLE INIT TEST TEST TEST PASS PASS IDLE IDLE
+
+# Digital test patterns
+Test_Pattern_A:0101010101010101010101010101010101010101010
+Test_Pattern_B:0011001100110011001100110011001100110011001
+
+# Analog test signal (sine wave simulation)
+Test_Voltage:5.0,5.5,6.0,6.5,7.0,7.5,8.0,8.5,9.0,9.5,10.0,9.5,9.0,8.5,8.0,7.5,7.0,6.5,6.0,5.5,5.0,4.5,4.0,3.5,3.0,2.5,2.0,1.5,1.0,0.5,0.0,0.5,1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0,7.5,8.0,8.5,9.0,9.5
+
+SPACE
+
+SUBSECTION:Error Detection
+Error_Flag:00000000001111111111111111111100000000000000
+Error_Code:OFF OFF OFF OFF ERROR ERROR ERROR ERROR OFF OFF OFF OFF
+
+# PWM error indicator (flashing pattern)
+PWM_Error_LED:0,0,0,0,100,0,100,0,100,0,100,0,100,0,100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+
+SPACE
+
+# ============================================================
+# SENSOR DATA SECTION
+# ============================================================
+SECTION:SENSORS,Sensor Data
+
+SUBSECTION:Temperature Sensors
+# Analog temperature readings (Celsius)
+Temp_MCU:25,25,26,27,28,30,32,35,38,40,42,45,48,50,52,54,55,56,57,58,59,60,59,58,57,56,55,54,52,50,48,45,42,40,38,35,32,30,28,27,26,25,25,25,25,25,25,25,25,25
+
+Temp_Motor:20,20,22,25,30,35,40,45,50,55,60,65,70,75,80,85,85,85,80,75,70,65,60,55,50,45,40,35,30,25,22,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20
+
+SPACE
+
+SUBSECTION:Position Sensors
+# Analog position (0-100%)
+Throttle_Pos:0,0,0,5,10,15,20,30,40,50,60,70,80,90,100,100,90,80,70,60,50,40,30,20,15,10,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+
+Brake_Pos:0,0,0,0,0,0,0,0,0,0,0,0,20,40,60,80,100,100,80,60,40,20,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+
+# Digital sensor states
+Sensor_A:00000111111111111111111111111111111000000000
+Sensor_B:00000000111111111111111111111111000000000000
+
+# Clock reference
+CLK_10kHz:10kHz
+
+# End of configuration
+"""
+        with open(filename, 'w') as f:
+            f.write(example_content)
 
 
-def create_multiple_diagrams():
-    """Create 200 signals easily using loops"""
-    
-    t = SimpleTimingDiagram()
-    t.setup_basic_grid("200 Signal Example")
-    
-    # Example: Generate many similar signals programmatically
-    for i in range(1, 21):  # 20 CAN messages
-        # Create pattern with different timings
-        pattern = '0' * (i) + '1' * 10 + '0' * (40 - i)
-        t.add(f"CAN_MSG_{i:03d}", pattern)
-    
-    t.space()
-    
-    # Generate sensor signals
-    for i in range(1, 11):  # 10 sensors
-        # Random-like pattern
-        pattern = ''.join(['1' if (j + i) % 3 == 0 else '0' for j in range(50)])
-        t.add(f"SENSOR_{i:02d}", pattern)
-    
-    t.save("many_signals.xlsx")
+def main():
+    """Main function to create enhanced timing diagrams"""
+    print("\n" + "="*70)
+    print("ENHANCED MULTI-SIGNAL TIMING DIAGRAM GENERATOR")
+    print("="*70)
+    print("Features:")
+    print("  • Digital signals with edge detection")
+    print("  • Analog waveform visualization")
+    print("  • PWM duty cycle display")
+    print("  • Clock signal generation")
+    print("  • State machine visualization")
+    print("  • Automatic signal type detection")
+    print("="*70)
 
+    # Process files
+    files = [
+        ("enhanced_timing.txt", "enhanced_output.xlsx"),
+    ]
 
-# ============================================================================
-# MAIN EXECUTION
-# ============================================================================
+    for input_file, output_file in files:
+        print(f"\nProcessing: {input_file}")
+        print("-" * 40)
+
+        generator = EnhancedTimingGenerator()
+        if generator.process_file(input_file):
+            generator.save(output_file)
+            print(f"✓ Generated: {output_file}")
+        else:
+            print(f"  Please edit {input_file} and run again")
+
+    print("\n" + "="*70)
+    print("SIGNAL TYPE REFERENCE:")
+    print("="*70)
+    print("""
+    DIGITAL:  0/1, HIGH/LOW, X (undefined), Z (high-impedance)
+              Example: Signal:01010101XXZZ
+    
+    ANALOG:   Continuous values with automatic scaling
+              Example: V_Supply:0,3.3,5.0,12.0,14.4,12.0,5.0,3.3,0
+    
+    PWM:      Duty cycle 0-100% with color gradient
+              Example: PWM_Motor:0,25,50,75,100,75,50,25,0
+    
+    CLOCK:    Automatic clock generation from frequency
+              Example: CLK_1kHz:1kHz
+    
+    STATE:    State machine with colored states
+              Example: Mode:IDLE INIT RUN ERROR IDLE
+    """)
+    print("="*70)
+
 
 if __name__ == "__main__":
-    print("\n" + "="*60)
-    print("SUPER SIMPLE ECU TIMING DIAGRAM GENERATOR")
-    print("="*60)
-    
-    # Method 1: Direct code (easiest for small diagrams)
-    print("\n1. Creating timing diagram from code...")
-    create_timing_from_simple_input()
-    
-    # Method 2: From text file (best for many signals)
-    print("\n2. Creating from text file...")
-    create_from_text_file()
-    
-    # Method 3: Programmatic generation (best for repetitive signals)
-    print("\n3. Creating many signals programmatically...")
-    create_multiple_diagrams()
-    
-    print("\n" + "="*60)
-    print("✓ ALL DONE! Check your Excel files:")
-    print("  - my_timing_diagram.xlsx")
-    print("  - timing_from_file.xlsx (or edit signals.txt)")
-    print("  - many_signals.xlsx")
-    print("\nJust edit the patterns in the code or signals.txt file!")
-    print("Patterns: 0=LOW, 1=HIGH, -=don't care, X=undefined")
-    print("States: Just write state names with spaces!")
-    print("="*60)
-
-
-# ============================================================================
-# QUICK REFERENCE
-# ============================================================================
-"""
-QUICK REFERENCE FOR PATTERNS:
-
-Digital Patterns:
-  "00001111000"     - Simple on/off
-  "01010101010"     - Clock signal  
-  "10001000100"     - Periodic pulse
-  "000---------"    - Don't care region
-  "0000XXXX000"     - Undefined region
-
-State Patterns:
-  "OFF OFF ON ON"   - Simple states
-  "SLEEP INIT RUN"  - ECU states
-  
-Just count the time units:
-  - Each character = 1 time unit
-  - Each unit = 20ms (configurable)
-  - Total 50 units = 1000ms
-
-That's it! Super simple!
-"""
+    main()
