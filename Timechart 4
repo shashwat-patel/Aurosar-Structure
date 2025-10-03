@@ -1,0 +1,754 @@
+import pandas as pd
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.chart import LineChart, Reference, BarChart
+from openpyxl.chart.axis import DateAxis
+from openpyxl.formatting.rule import ColorScaleRule, DataBarRule, IconSetRule
+from openpyxl.drawing.fill import PatternFillProperties, ColorChoice
+import os
+import json
+import re
+from datetime import datetime
+from typing import Dict, List, Tuple, Optional
+
+class AdvancedTimingChartGenerator:
+    """
+    Advanced Timing Chart Generator with support for different signal types:
+    - Digital signals (0/1, HIGH/LOW)
+    - PWM signals (duty cycle percentage)
+    - Analog signals (voltage/current values with ranges)
+    - State machines (custom state definitions)
+    - Edge detection and transition markers
+    """
+    
+    def __init__(self):
+        # Initialize signal type configurations
+        self.signal_types = {}
+        self.signal_configs = {}
+        
+        # Enhanced color schemes
+        self.color_schemes = {
+            # Digital values
+            '0': 'FFD3D3D3',    # Light gray
+            '1': 'FF00FF00',    # Green
+            'LOW': 'FFD3D3D3',  # Light gray
+            'HIGH': 'FF00FF00', # Green
+            'X': 'FFFF00FF',    # Magenta (undefined)
+            'Z': 'FF00FFFF',    # Cyan (high impedance)
+            
+            # State machine values
+            'IDLE': 'FFD3D3D3',     # Light gray
+            'INIT': 'FFFFFF00',     # Yellow
+            'ACTIVE': 'FF00FF00',   # Green
+            'ERROR': 'FFFF0000',    # Red
+            'WARNING': 'FFFFA500',  # Orange
+            
+            # Default states
+            'OFF': 'FFD3D3D3',  # Light gray
+            'ON': 'FF00FF00',   # Green
+            'STRT': 'FFFFFF00', # Yellow
+            'WAKE': 'FFFFA500', # Orange
+            'RUN': 'FF00FF00',  # Green
+            'LTCH': 'FF87CEEB', # Sky blue
+            'PST1': 'FFB0C4DE', # Light steel blue
+            'PST2': 'FFB0C4DE', # Light steel blue
+            'SHUT': 'FFFF6B6B', # Light red
+            
+            # Special values
+            'RST': 'FFFF0000',  # Red
+            'ACT': 'FF00FF00',  # Green
+            'PWM': 'FF00FFFF',  # Cyan
+            '-': 'FF808080',    # Gray (N/A)
+        }
+        
+        # PWM color gradient (0-100%)
+        self.pwm_gradient = {
+            0: 'FFD3D3D3',      # Gray
+            25: 'FFFFFFE0',     # Light yellow
+            50: 'FFFFFF00',     # Yellow
+            75: 'FFFFA500',     # Orange
+            100: 'FF00FF00',    # Green
+        }
+        
+        # Analog value ranges and colors
+        self.analog_ranges = {
+            'voltage': [
+                (0, 3.3, 'FFFFE0E0'),      # Low voltage - light red
+                (3.3, 5.0, 'FFFFE0FF'),     # Logic level - light magenta
+                (5.0, 12.0, 'FFFFF0E0'),    # Standard - light orange
+                (12.0, 15.0, 'FFE0FFE0'),   # Operating - light green
+                (15.0, 24.0, 'FFE0E0FF'),   # High - light blue
+                (24.0, float('inf'), 'FFFFE0E0')  # Over-voltage - light red
+            ],
+            'current': [
+                (0, 10, 'FFE0FFE0'),        # Low - light green
+                (10, 50, 'FFFFF0E0'),       # Normal - light orange
+                (50, 100, 'FFFFE0E0'),      # High - light yellow
+                (100, 500, 'FFFFA500'),     # Very high - orange
+                (500, float('inf'), 'FFFF0000')  # Over-current - red
+            ]
+        }
+
+    def detect_signal_type(self, signal_name: str, values: List[str]) -> str:
+        """
+        Automatically detect signal type based on name and values.
+        """
+        signal_name_lower = signal_name.lower()
+        
+        # Check by signal name patterns
+        if any(x in signal_name_lower for x in ['pwm', 'duty', 'pulse']):
+            return 'pwm'
+        elif any(x in signal_name_lower for x in ['voltage', 'volt', 'v(', 'vdd', 'vcc']):
+            return 'analog_voltage'
+        elif any(x in signal_name_lower for x in ['current', 'amp', 'ma', 'a(']):
+            return 'analog_current'
+        elif any(x in signal_name_lower for x in ['state', 'fsm', 'mode']):
+            return 'state_machine'
+        elif any(x in signal_name_lower for x in ['clk', 'clock', 'sclk', 'mclk']):
+            return 'clock'
+        elif any(x in signal_name_lower for x in ['data', 'sda', 'miso', 'mosi', 'rx', 'tx']):
+            return 'digital'
+        
+        # Check by value patterns
+        unique_values = set(values)
+        
+        # Check if all values are 0/1 or HIGH/LOW
+        if unique_values.issubset({'0', '1', 'HIGH', 'LOW', 'H', 'L', 'X', 'Z', '-'}):
+            return 'digital'
+        
+        # Check if values contain percentage
+        if any('%' in str(v) for v in values):
+            return 'pwm'
+        
+        # Check if values are numeric (potential analog)
+        try:
+            numeric_values = [float(v.replace('V', '').replace('mA', '').replace('A', '')) 
+                            for v in values if v != '-']
+            if numeric_values:
+                max_val = max(numeric_values)
+                if max_val > 100:
+                    return 'analog_current'  # Likely mA
+                elif max_val > 30:
+                    return 'analog_voltage'  # Likely voltage
+                else:
+                    return 'analog_voltage'  # Default analog
+        except:
+            pass
+        
+        # Default to state machine for text values
+        return 'state_machine'
+
+    def parse_config_file(self, config_path: str) -> Dict:
+        """
+        Parse configuration file for signal types and display settings.
+        Format can be JSON or simple text.
+        """
+        if config_path.endswith('.json'):
+            with open(config_path, 'r') as f:
+                return json.load(f)
+        else:
+            config = {'signals': {}}
+            with open(config_path, 'r') as f:
+                for line in f:
+                    if '=' in line:
+                        signal, stype = line.strip().split('=')
+                        config['signals'][signal.strip()] = stype.strip()
+            return config
+
+    def read_advanced_input(self, filepath: str, config_path: Optional[str] = None) -> Dict:
+        """
+        Read input file with automatic signal type detection.
+        """
+        data = {}
+        
+        # Read basic data
+        with open(filepath, 'r') as file:
+            for line in file:
+                line = line.strip()
+                if ':' in line:
+                    key, values = line.split(':', 1)
+                    key = key.strip()
+                    values = [v.strip() for v in values.split(',')]
+                    data[key] = values
+        
+        # Load configuration if provided
+        if config_path:
+            config = self.parse_config_file(config_path)
+            self.signal_configs = config.get('signals', {})
+        
+        # Detect signal types
+        for signal_name, values in data.items():
+            if signal_name == 'Time':
+                continue
+            if signal_name in self.signal_configs:
+                self.signal_types[signal_name] = self.signal_configs[signal_name]
+            else:
+                self.signal_types[signal_name] = self.detect_signal_type(signal_name, values)
+        
+        return data
+
+    def calculate_transitions(self, values: List[str]) -> List[Tuple[int, str]]:
+        """
+        Calculate signal transitions (edges) for digital signals.
+        Returns list of (index, transition_type) where type is 'rising' or 'falling'.
+        """
+        transitions = []
+        for i in range(1, len(values)):
+            prev_val = values[i-1]
+            curr_val = values[i]
+            
+            # Convert to binary representation
+            prev_bin = prev_val in ['1', 'HIGH', 'H', 'ON']
+            curr_bin = curr_val in ['1', 'HIGH', 'H', 'ON']
+            
+            if not prev_bin and curr_bin:
+                transitions.append((i, 'rising'))
+            elif prev_bin and not curr_bin:
+                transitions.append((i, 'falling'))
+        
+        return transitions
+
+    def apply_signal_formatting(self, ws, row: int, col: int, value: str, 
+                               signal_type: str, signal_name: str):
+        """
+        Apply advanced formatting based on signal type and value.
+        """
+        cell = ws.cell(row=row, column=col)
+        cell.value = value
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+        
+        # Apply type-specific formatting
+        if signal_type == 'digital':
+            if value in ['1', 'HIGH', 'H', 'ON']:
+                cell.fill = PatternFill(start_color="FF00FF00", end_color="FF00FF00", 
+                                       fill_type="solid")
+                cell.font = Font(bold=True)
+            elif value in ['0', 'LOW', 'L', 'OFF']:
+                cell.fill = PatternFill(start_color="FFD3D3D3", end_color="FFD3D3D3", 
+                                       fill_type="solid")
+            elif value == 'X':
+                cell.fill = PatternFill(start_color="FFFF00FF", end_color="FFFF00FF", 
+                                       fill_type="solid")
+            elif value == 'Z':
+                cell.fill = PatternFill(start_color="FF00FFFF", end_color="FF00FFFF", 
+                                       fill_type="solid")
+        
+        elif signal_type == 'pwm':
+            # Extract duty cycle value
+            try:
+                if '%' in value:
+                    duty = float(value.replace('%', ''))
+                elif value.isdigit():
+                    duty = float(value)
+                else:
+                    duty = 0
+                
+                # Apply gradient color based on duty cycle
+                if duty == 0:
+                    color = self.pwm_gradient[0]
+                elif duty <= 25:
+                    color = self.pwm_gradient[25]
+                elif duty <= 50:
+                    color = self.pwm_gradient[50]
+                elif duty <= 75:
+                    color = self.pwm_gradient[75]
+                else:
+                    color = self.pwm_gradient[100]
+                
+                cell.fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
+                cell.font = Font(bold=(duty > 50))
+                
+                # Add percentage symbol if not present
+                if '%' not in str(value):
+                    cell.value = f"{duty}%"
+            except:
+                pass
+        
+        elif signal_type == 'clock':
+            # Alternate coloring for clock signals
+            if value in ['1', 'HIGH', 'H']:
+                cell.fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", 
+                                       fill_type="solid")
+                cell.font = Font(bold=True)
+            else:
+                cell.fill = PatternFill(start_color="FFFFF0F0", end_color="FFFFF0F0", 
+                                       fill_type="solid")
+        
+        elif signal_type == 'analog_voltage':
+            try:
+                voltage = float(re.sub(r'[^\d.-]', '', value))
+                for min_v, max_v, color in self.analog_ranges['voltage']:
+                    if min_v <= voltage < max_v:
+                        cell.fill = PatternFill(start_color=color, end_color=color, 
+                                              fill_type="solid")
+                        break
+                # Bold for high voltages
+                if voltage > 15:
+                    cell.font = Font(bold=True, color="FF0000")
+            except:
+                pass
+        
+        elif signal_type == 'analog_current':
+            try:
+                current = float(re.sub(r'[^\d.-]', '', value))
+                for min_c, max_c, color in self.analog_ranges['current']:
+                    if min_c <= current < max_c:
+                        cell.fill = PatternFill(start_color=color, end_color=color, 
+                                              fill_type="solid")
+                        break
+                # Bold and red for high current
+                if current > 100:
+                    cell.font = Font(bold=True, color="FF0000")
+            except:
+                pass
+        
+        elif signal_type == 'state_machine':
+            # Use predefined colors or generate based on hash
+            if value.upper() in self.color_schemes:
+                color = self.color_schemes[value.upper()]
+            else:
+                # Generate consistent color based on state name
+                hash_val = sum(ord(c) for c in value)
+                colors = ['FFE0E0FF', 'FFFFE0E0', 'FFE0FFE0', 'FFFFE0FF', 
+                         'FFE0FFFF', 'FFFFFF0E0']
+                color = colors[hash_val % len(colors)]
+            
+            cell.fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
+            
+            # Bold for active states
+            if any(x in value.upper() for x in ['ACTIVE', 'RUN', 'ON', 'ENABLE']):
+                cell.font = Font(bold=True)
+            # Red for error states
+            if any(x in value.upper() for x in ['ERROR', 'FAULT', 'FAIL']):
+                cell.font = Font(bold=True, color="FFFFFF")
+                cell.fill = PatternFill(start_color="FFFF0000", end_color="FFFF0000", 
+                                       fill_type="solid")
+
+    def add_transition_markers(self, ws, row: int, signal_values: List[str], 
+                             time_cols: List[int]):
+        """
+        Add visual markers for signal transitions (edges).
+        """
+        transitions = self.calculate_transitions(signal_values)
+        
+        for trans_idx, trans_type in transitions:
+            if trans_idx < len(time_cols):
+                cell = ws.cell(row=row, column=time_cols[trans_idx])
+                
+                # Add special border for transitions
+                if trans_type == 'rising':
+                    # Thick left border for rising edge
+                    current_border = cell.border
+                    cell.border = Border(
+                        left=Side(style='thick', color='FF00FF00'),
+                        right=current_border.right,
+                        top=current_border.top,
+                        bottom=current_border.bottom
+                    )
+                elif trans_type == 'falling':
+                    # Thick left border for falling edge
+                    current_border = cell.border
+                    cell.border = Border(
+                        left=Side(style='thick', color='FFFF0000'),
+                        right=current_border.right,
+                        top=current_border.top,
+                        bottom=current_border.bottom
+                    )
+
+    def add_mini_graphs(self, ws, data: Dict, start_row: int):
+        """
+        Add mini sparkline-style graphs for analog signals.
+        """
+        chart_row = start_row + 2
+        
+        for signal_name, signal_type in self.signal_types.items():
+            if signal_type in ['analog_voltage', 'analog_current', 'pwm']:
+                # Create mini chart
+                chart = LineChart()
+                chart.title = f"{signal_name} Trend"
+                chart.height = 4  # Small height
+                chart.width = 10  # Small width
+                
+                # Configure chart
+                chart.y_axis.title = signal_name
+                chart.x_axis.title = "Time"
+                chart.legend = None
+                
+                # Add data (would need proper row references)
+                # This is a placeholder for the concept
+                
+                # Position chart
+                ws.add_chart(chart, f"P{chart_row}")
+                chart_row += 5
+
+    def create_advanced_excel(self, data: Dict, output_filepath: str, 
+                            title: str = "ADVANCED TIMING CHART",
+                            show_transitions: bool = True,
+                            add_statistics: bool = True):
+        """
+        Create advanced Excel file with enhanced features.
+        """
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Timing Chart"
+        
+        # Define styles
+        header_font = Font(bold=True, size=12, color="FFFFFF")
+        header_fill = PatternFill(start_color="FF4A4A4A", end_color="FF4A4A4A", 
+                                fill_type="solid")
+        header_align = Alignment(horizontal="center", vertical="center")
+        
+        signal_font = Font(bold=True, size=11, color="FF000080")
+        signal_fill = PatternFill(start_color="FFE6E6FA", end_color="FFE6E6FA", 
+                                fill_type="solid")
+        
+        type_font = Font(italic=True, size=9, color="FF666666")
+        
+        border_style = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+        
+        # Add title
+        ws.merge_cells('A1:' + get_column_letter(len(data.get('Time', [])) + 2) + '1')
+        title_cell = ws['A1']
+        title_cell.value = title
+        title_cell.font = Font(bold=True, size=14, color="FFFFFF")
+        title_cell.fill = PatternFill(start_color="FF2C3E50", end_color="FF2C3E50", 
+                                    fill_type="solid")
+        title_cell.alignment = Alignment(horizontal="center", vertical="center")
+        
+        # Starting row for data
+        start_row = 3
+        
+        # Add time header row
+        ws.cell(row=start_row, column=1, value="Signal Name")
+        ws.cell(row=start_row, column=1).font = header_font
+        ws.cell(row=start_row, column=1).fill = header_fill
+        
+        ws.cell(row=start_row, column=2, value="Type")
+        ws.cell(row=start_row, column=2).font = header_font
+        ws.cell(row=start_row, column=2).fill = header_fill
+        
+        # Add time values
+        time_values = data.get('Time', [])
+        time_cols = []
+        for i, time_val in enumerate(time_values, start=3):
+            cell = ws.cell(row=start_row, column=i, value=f"{time_val}ms")
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_align
+            cell.border = border_style
+            time_cols.append(i)
+        
+        # Group signals by type
+        signal_groups = {
+            'State Machines': [],
+            'Digital Signals': [],
+            'PWM Signals': [],
+            'Analog Signals': [],
+            'Clock Signals': [],
+            'Other': []
+        }
+        
+        for signal_name in data.keys():
+            if signal_name == 'Time':
+                continue
+            
+            signal_type = self.signal_types.get(signal_name, 'digital')
+            
+            if signal_type == 'state_machine' or signal_name == 'STATE':
+                signal_groups['State Machines'].append(signal_name)
+            elif signal_type == 'digital':
+                signal_groups['Digital Signals'].append(signal_name)
+            elif signal_type == 'pwm':
+                signal_groups['PWM Signals'].append(signal_name)
+            elif signal_type in ['analog_voltage', 'analog_current']:
+                signal_groups['Analog Signals'].append(signal_name)
+            elif signal_type == 'clock':
+                signal_groups['Clock Signals'].append(signal_name)
+            else:
+                signal_groups['Other'].append(signal_name)
+        
+        # Add signals by group
+        current_row = start_row + 1
+        
+        for group_name, signals in signal_groups.items():
+            if not signals:
+                continue
+            
+            # Add group separator
+            ws.merge_cells(f'A{current_row}:{get_column_letter(len(time_values) + 2)}{current_row}')
+            group_cell = ws.cell(row=current_row, column=1, value=group_name)
+            group_cell.font = Font(bold=True, size=10, color="FFFFFF")
+            group_cell.fill = PatternFill(start_color="FF666666", end_color="FF666666", 
+                                        fill_type="solid")
+            group_cell.alignment = Alignment(horizontal="center", vertical="center")
+            current_row += 1
+            
+            # Add signals in this group
+            for signal_name in signals:
+                signal_values = data[signal_name]
+                signal_type = self.signal_types.get(signal_name, 'digital')
+                
+                # Signal name cell
+                name_cell = ws.cell(row=current_row, column=1, value=signal_name)
+                name_cell.font = signal_font
+                name_cell.fill = signal_fill
+                name_cell.alignment = Alignment(horizontal="left", vertical="center")
+                name_cell.border = border_style
+                
+                # Signal type cell
+                type_cell = ws.cell(row=current_row, column=2, value=signal_type.replace('_', ' ').title())
+                type_cell.font = type_font
+                type_cell.alignment = Alignment(horizontal="center", vertical="center")
+                type_cell.border = border_style
+                
+                # Signal values with advanced formatting
+                for i, value in enumerate(signal_values):
+                    self.apply_signal_formatting(ws, current_row, i + 3, value, 
+                                                signal_type, signal_name)
+                
+                # Add transition markers for digital signals
+                if show_transitions and signal_type in ['digital', 'clock']:
+                    self.add_transition_markers(ws, current_row, signal_values, time_cols)
+                
+                current_row += 1
+        
+        # Add statistics section if requested
+        if add_statistics:
+            current_row += 2
+            ws.merge_cells(f'A{current_row}:C{current_row}')
+            stats_title = ws.cell(row=current_row, column=1, value="SIGNAL STATISTICS")
+            stats_title.font = Font(bold=True, size=11)
+            stats_title.fill = PatternFill(start_color="FFE6E6FA", end_color="FFE6E6FA", 
+                                          fill_type="solid")
+            current_row += 1
+            
+            # Headers
+            ws.cell(row=current_row, column=1, value="Signal")
+            ws.cell(row=current_row, column=2, value="Transitions")
+            ws.cell(row=current_row, column=3, value="Duty Cycle")
+            ws.cell(row=current_row, column=4, value="Min")
+            ws.cell(row=current_row, column=5, value="Max")
+            ws.cell(row=current_row, column=6, value="Average")
+            
+            for col in range(1, 7):
+                ws.cell(row=current_row, column=col).font = Font(bold=True)
+                ws.cell(row=current_row, column=col).fill = PatternFill(
+                    start_color="FFD0D0D0", end_color="FFD0D0D0", fill_type="solid")
+            
+            current_row += 1
+            
+            # Calculate statistics
+            for signal_name in data.keys():
+                if signal_name == 'Time':
+                    continue
+                
+                signal_values = data[signal_name]
+                signal_type = self.signal_types.get(signal_name, 'digital')
+                
+                ws.cell(row=current_row, column=1, value=signal_name)
+                
+                # Transitions for digital
+                if signal_type in ['digital', 'clock']:
+                    transitions = self.calculate_transitions(signal_values)
+                    ws.cell(row=current_row, column=2, value=len(transitions))
+                    
+                    # Duty cycle
+                    high_count = sum(1 for v in signal_values if v in ['1', 'HIGH', 'H'])
+                    duty = (high_count / len(signal_values)) * 100
+                    ws.cell(row=current_row, column=3, value=f"{duty:.1f}%")
+                
+                # Min/Max/Avg for analog
+                elif signal_type in ['analog_voltage', 'analog_current']:
+                    try:
+                        numeric_values = [float(re.sub(r'[^\d.-]', '', v)) 
+                                        for v in signal_values if v != '-']
+                        if numeric_values:
+                            ws.cell(row=current_row, column=4, value=min(numeric_values))
+                            ws.cell(row=current_row, column=5, value=max(numeric_values))
+                            ws.cell(row=current_row, column=6, value=sum(numeric_values)/len(numeric_values))
+                    except:
+                        pass
+                
+                current_row += 1
+        
+        # Add legend
+        legend_row = current_row + 2
+        ws.merge_cells(f'A{legend_row}:H{legend_row}')
+        legend_title = ws[f'A{legend_row}']
+        legend_title.value = "LEGEND & SIGNAL TYPES"
+        legend_title.font = Font(bold=True, size=12)
+        legend_title.fill = PatternFill(start_color="FFE6E6FA", end_color="FFE6E6FA", 
+                                       fill_type="solid")
+        
+        # Legend items
+        legend_items = [
+            ('Digital: 0/LOW', 'FFD3D3D3'),
+            ('Digital: 1/HIGH', 'FF00FF00'),
+            ('Digital: X (Unknown)', 'FFFF00FF'),
+            ('Digital: Z (Hi-Z)', 'FF00FFFF'),
+            ('PWM: 0-25%', 'FFFFFFE0'),
+            ('PWM: 25-50%', 'FFFFFF00'),
+            ('PWM: 50-75%', 'FFFFA500'),
+            ('PWM: 75-100%', 'FF00FF00'),
+            ('State: IDLE', 'FFD3D3D3'),
+            ('State: ACTIVE', 'FF00FF00'),
+            ('State: ERROR', 'FFFF0000'),
+            ('Analog: Normal', 'FFE0FFE0'),
+            ('Analog: Warning', 'FFFFA500'),
+            ('Analog: Critical', 'FFFF0000'),
+            ('Rising Edge', None),  # Special marker
+            ('Falling Edge', None), # Special marker
+        ]
+        
+        legend_col = 1
+        legend_row += 1
+        for item, color in legend_items:
+            if legend_col > len(time_values) + 2:
+                legend_row += 1
+                legend_col = 1
+            
+            cell = ws.cell(row=legend_row, column=legend_col, value=item)
+            cell.font = Font(size=9)
+            if color:
+                cell.fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
+            cell.border = border_style
+            legend_col += 1
+        
+        # Adjust column widths
+        ws.column_dimensions['A'].width = 20  # Signal names
+        ws.column_dimensions['B'].width = 15  # Signal types
+        for col in range(3, len(time_values) + 3):
+            ws.column_dimensions[get_column_letter(col)].width = 8
+        
+        # Freeze panes
+        ws.freeze_panes = 'C4'
+        
+        # Add conditional formatting for analog values
+        # This adds data bars for current values to visualize magnitude
+        for row in range(start_row + 1, current_row):
+            signal_name = ws.cell(row=row, column=1).value
+            if signal_name and 'current' in signal_name.lower():
+                range_string = f"C{row}:{get_column_letter(len(time_values) + 2)}{row}"
+                ws.conditional_formatting.add(range_string,
+                    DataBarRule(start_type='min', end_type='max',
+                               color="FF0000", showValue=True, minLength=None, maxLength=None))
+        
+        # Save workbook
+        wb.save(output_filepath)
+        print(f"✓ Advanced Excel file created: {output_filepath}")
+        
+        # Print summary
+        print("\n📊 SIGNAL SUMMARY:")
+        for group_name, signals in signal_groups.items():
+            if signals:
+                print(f"  {group_name}: {len(signals)} signals")
+                for sig in signals[:3]:  # Show first 3
+                    sig_type = self.signal_types.get(sig, 'unknown')
+                    print(f"    • {sig} ({sig_type})")
+                if len(signals) > 3:
+                    print(f"    ... and {len(signals) - 3} more")
+
+    def generate_sample_files(self):
+        """
+        Generate sample input files demonstrating different signal types.
+        """
+        # Sample 1: Mixed signal types
+        sample_advanced = """Time: 0,50,100,150,200,250,300,350,400,450,500
+STATE: IDLE,IDLE,INIT,INIT,ACTIVE,ACTIVE,ACTIVE,WARNING,ERROR,IDLE,IDLE
+CLK: 0,1,0,1,0,1,0,1,0,1,0
+DATA: X,0,1,1,0,1,0,0,1,Z,X
+PWM_Output: 0%,0%,25%,50%,75%,100%,100%,75%,50%,25%,0%
+Voltage(V): 0,3.3,3.3,5.0,5.0,12.0,14.4,14.4,12.0,5.0,0
+Current(mA): 2,10,15,25,50,100,150,120,80,40,5
+SPI_MOSI: 0,1,1,0,1,0,0,1,1,0,0
+I2C_SDA: Z,0,1,0,1,0,1,0,1,0,Z
+Enable: LOW,LOW,LOW,HIGH,HIGH,HIGH,HIGH,HIGH,LOW,LOW,LOW
+Error_Flag: 0,0,0,0,0,0,0,1,1,0,0"""
+        
+        with open('sample_advanced_timing.txt', 'w') as f:
+            f.write(sample_advanced)
+        
+        # Sample 2: Configuration file
+        sample_config = """{
+    "signals": {
+        "STATE": "state_machine",
+        "CLK": "clock",
+        "DATA": "digital",
+        "PWM_Output": "pwm",
+        "Voltage(V)": "analog_voltage",
+        "Current(mA)": "analog_current",
+        "SPI_MOSI": "digital",
+        "I2C_SDA": "digital",
+        "Enable": "digital",
+        "Error_Flag": "digital"
+    },
+    "display": {
+        "show_transitions": true,
+        "show_statistics": true,
+        "group_by_type": true
+    }
+}"""
+        
+        with open('signal_config.json', 'w') as f:
+            f.write(sample_config)
+        
+        print("✓ Sample files created: sample_advanced_timing.txt, signal_config.json")
+
+# Example usage
+def main():
+    # Initialize advanced generator
+    generator = AdvancedTimingChartGenerator()
+    
+    # Generate sample files
+    generator.generate_sample_files()
+    
+    print("=" * 70)
+    print("ADVANCED TIMING CHART GENERATOR")
+    print("=" * 70)
+    print("\nFeatures:")
+    print("• Automatic signal type detection")
+    print("• Digital signals with edge detection")
+    print("• PWM signals with duty cycle visualization")
+    print("• Analog signals with range-based coloring")
+    print("• State machine visualization")
+    print("• Signal statistics and analysis")
+    print("• Grouped signal organization")
+    print("• Transition markers for edges")
+    print("• Conditional formatting")
+    print("=" * 70)
+    
+    # Process with advanced features
+    data = generator.read_advanced_input('sample_advanced_timing.txt', 'signal_config.json')
+    generator.create_advanced_excel(
+        data, 
+        'advanced_timing_chart.xlsx',
+        title='ADVANCED MIXED-SIGNAL TIMING ANALYSIS',
+        show_transitions=True,
+        add_statistics=True
+    )
+    
+    print("\n✅ Generation complete!")
+    print("Files created:")
+    print("  • advanced_timing_chart.xlsx - Full featured timing chart")
+    print("\nSignal Types Supported:")
+    print("  • Digital (0/1, HIGH/LOW, X, Z)")
+    print("  • PWM (0-100% duty cycle)")
+    print("  • Analog Voltage (with range coloring)")
+    print("  • Analog Current (with warning levels)")
+    print("  • Clock signals (with special formatting)")
+    print("  • State Machines (custom states)")
+
+if __name__ == "__main__":
+    main()
